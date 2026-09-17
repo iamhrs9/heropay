@@ -1518,3 +1518,149 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* Sell Screen Recent Withdrawal Orders */
+.sell-orders-card {
+  margin: 12px 16px 0 16px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(120, 90, 60, 0.06);
+}
+
+.sell-orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sell-orders-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sell-orders-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.sell-orders-all-btn {
+  background: none;
+  border: none;
+  color: #FF6810;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.sell-orders-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sell-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.sell-order-row:active {
+  transform: scale(0.99);
+}
+
+.sell-order-row.pending {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.sell-order-row.failed {
+  background: rgba(239, 68, 68, 0.04);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.sell-order-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sell-order-badge-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sell-order-badge-icon.pending {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.sell-order-badge-icon.failed {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.sell-order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sell-order-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sell-order-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.sell-order-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.sell-order-status-pill.pending {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.sell-order-status-pill.failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.sell-order-date {
+  font-size: 11px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

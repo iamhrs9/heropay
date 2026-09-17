@@ -37,6 +37,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('login')
   const [activeTab, setActiveTab] = useState('sell')
   const [returnScreen, setReturnScreen] = useState('sell')
+  const [recordInitialTab, setRecordInitialTab] = useState('sell')
   const [toastMessage, setToastMessage] = useState(null)
 
   // Logged in user (from MongoDB via JWT)
@@ -196,13 +197,8 @@ export default function App() {
       }
     }
 
-    // Determine UPI list to assign orders to
-    const fallbackUpi = {
-      providerName: 'UPI',
-      vpa: userPhone ? `${userPhone}@paytm` : 'user@okaxis',
-      phone: userPhone || ''
-    }
-    const upiList = activeUpis && activeUpis.length > 0 ? activeUpis : [fallbackUpi]
+    // Require BOTH: balance > 0 AND user must have added at least one active UPI
+    if (bal <= 0 || !activeUpis || activeUpis.length === 0) return []
 
     const d = new Date(startTime)
     const nowD = new Date()
@@ -213,8 +209,8 @@ export default function App() {
       : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${timeStr}`
 
     return chunks.map((chunkAmt, idx) => {
-      const chosenUpi = upiList[idx % upiList.length]
-      const methodStr = `${chosenUpi.providerName || 'UPI'} (${chosenUpi.vpa || chosenUpi.upiAddress || chosenUpi.phone || 'Linked UPI'})`
+      const chosenUpi = activeUpis[idx % activeUpis.length]
+      const methodStr = `${chosenUpi.providerName || 'UPI'} (${chosenUpi.vpa || chosenUpi.upiAddress || chosenUpi.phone || 'UPI'})`
       const orderId = `SELL_${startTime}_${idx + 1}`
 
       return {
@@ -241,8 +237,8 @@ export default function App() {
     const activeUpis = withdrawalUpis.filter(isUpiActive)
     const currentBal = Number(userBalance) || 0
 
-    // RULE 1: If user has 0 balance (or <= 0), NO withdrawal should run!
-    if (currentBal <= 0) {
+    // RULE 1: If user has 0 balance OR user has NOT added any active UPI account, NO withdrawal should run!
+    if (currentBal <= 0 || activeUpis.length === 0) {
       try {
         localStorage.removeItem('hp_sim_cycle_anchor')
         localStorage.removeItem('hp_sim_sell_cycle')
@@ -1155,6 +1151,7 @@ export default function App() {
           <div className="mobile-content-viewport" style={{ paddingBottom: 0 }}>
             <RecordScreen
               records={allTransactionRecords}
+              initialTab={recordInitialTab}
               totalAward={totalAward}
               totalBuyGoCoin={totalBuyGoCoin}
               onContinueOrder={handleContinueOrder}
@@ -1177,9 +1174,13 @@ export default function App() {
                 hasWithdrawalInProgress={sellStats.hasWithdrawalInProgress}
                 activeWithdrawal={sellStats.activeWithdrawal}
                 withdrawalUpis={withdrawalUpis}
+                sellOrders={allTransactionRecords.filter((tx) => tx.type === 'sell')}
                 onManageUPI={() => handleOpenManageUPI('sell')}
                 onDeposit={() => showToast('Opening USDT Deposit Portal...')}
-                onOpenRecord={() => setCurrentScreen('record')}
+                onOpenRecord={() => {
+                  setRecordInitialTab('sell')
+                  setCurrentScreen('record')
+                }}
                 onRequestWithdrawal={handleRequestWithdrawal}
                 onNavigateTab={(tab) => handleTabChange(tab)}
                 onShowToast={showToast}

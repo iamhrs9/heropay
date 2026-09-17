@@ -27,9 +27,10 @@ export default function RecordScreen({
   totalAward = 0.00,
   totalBuyGoCoin = 0.00,
   onContinueOrder,
-  onCancelOrder
+  onCancelOrder,
+  initialTab = 'all'
 }) {
-  const [activeTab, setActiveTab] = useState('all') // 'all' | 'sell' | 'buy' | 'deposit' | 'team'
+  const [activeTab, setActiveTab] = useState(initialTab || 'all') // 'all' | 'sell' | 'buy' | 'deposit' | 'team'
   const [dateFilter, setDateFilter] = useState('Today')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [selectedTxDetail, setSelectedTxDetail] = useState(null)

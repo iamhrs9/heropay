@@ -33,6 +33,7 @@ export default function SellScreen({
   hasWithdrawalInProgress = false,
   activeWithdrawal = null,
   withdrawalUpis = [],
+  sellOrders = [],
   onManageUPI,
   onDeposit,
   onVideoClick,
@@ -225,6 +226,57 @@ export default function SellScreen({
           <span>Manage Sell HeroPay</span>
         </button>
       </div>
+
+      {/* Withdrawal Orders Section (Pending & Failed) */}
+      {sellOrders && sellOrders.length > 0 && (
+        <div className="sell-orders-card">
+          <div className="sell-orders-header">
+            <div className="sell-orders-title-group">
+              <Clock size={16} color="var(--color-primary)" />
+              <span className="sell-orders-title">Withdrawal Orders</span>
+            </div>
+            <button
+              type="button"
+              className="sell-orders-all-btn"
+              onClick={onOpenRecord}
+            >
+              <span>View in Record</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          <div className="sell-orders-items">
+            {sellOrders.slice(0, 3).map((tx) => (
+              <div
+                key={tx.id}
+                className={`sell-order-row ${tx.status === 'Pending' ? 'pending' : 'failed'}`}
+                onClick={onOpenRecord}
+              >
+                <div className="sell-order-row-left">
+                  <div className={`sell-order-badge-icon ${tx.status === 'Pending' ? 'pending' : 'failed'}`}>
+                    {tx.status === 'Pending' ? (
+                      <Clock size={14} color="#059669" />
+                    ) : (
+                      <AlertCircle size={14} color="#DC2626" />
+                    )}
+                  </div>
+                  <div className="sell-order-info">
+                    <div className="sell-order-title-row">
+                      <span className="sell-order-text">Payout {tx.amount}</span>
+                      <span className={`sell-order-status-pill ${tx.status === 'Pending' ? 'pending' : 'failed'}`}>
+                        {tx.status === 'Pending' ? 'In Progress' : 'Failed'}
+                      </span>
+                    </div>
+                    <span className="sell-order-date">
+                      {tx.status === 'Failed' && tx.actionNote ? tx.actionNote : tx.method} • {tx.date}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 4 Quick Action Channels */}
       <div className="sell-channels-grid">
