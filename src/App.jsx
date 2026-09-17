@@ -1269,7 +1269,7 @@ export default function App() {
         ) : activeTab === 'team' ? (
           <>
             <main className="mobile-content-viewport">
-              <TeamScreen onShareInvite={() => showToast('Invite link copied!')} user={loggedInUser} />
+              <TeamScreen onShareInvite={(msg) => showToast(msg || 'Invite link copied!')} user={loggedInUser} />
             </main>
             <BottomNavigation
               activeTab={activeTab}

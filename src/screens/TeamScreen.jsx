@@ -1,15 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Users,
-  UserPlus,
-  Link as LinkIcon,
   Copy,
-  QrCode,
   ChevronRight,
   ArrowRight,
   Check,
   X,
-  Share2
+  Share2,
+  Gift,
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react'
 import RewardCoin from '../components/RewardCoin'
 import HeroPayLogo from '../components/HeroPayLogo'
@@ -18,61 +18,108 @@ import './TeamScreen.css'
 
 export default function TeamScreen({ onShareInvite, user }) {
   const [activeTab, setActiveTab] = useState('level1')
-  const [copied, setCopied] = useState(false)
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
+  const [copiedMsg, setCopiedMsg] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
 
-  // Lock background scroll when modal is open
-  useLockScroll(isQrModalOpen || Boolean(selectedMember))
+  // Team data fetched live from backend
+  const [teamData, setTeamData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Referral URL uses last 6 chars of user's MongoDB _id as their unique code
-  const userCode = user?._id?.slice(-6).toUpperCase() || 'XXXXXX'
-  const referralUrl = `https://heropay.com/ref/${userCode}`
+  useLockScroll(Boolean(selectedMember))
 
-  // Team members come from backend (referral system) — empty until integrated
-  const level1Members = []
-  const level2Members = []
+  const fetchTeam = useCallback(async () => {
+    const token = localStorage.getItem('hp_token')
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
+    try {
+      const res = await fetch('/api/auth/team', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setTeamData(data)
+      }
+    } catch (err) {
+      console.error('Failed to load team data:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(referralUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  useEffect(() => {
+    fetchTeam()
+  }, [fetchTeam])
+
+  const userCode = teamData?.referralCode || user?.referralCode || 'HP' + (user?._id?.slice(-6).toUpperCase() || 'HERO')
+  const downloadUrl = 'https://tinyurl.com/4bxh52nh'
+
+  const totalMembers = teamData?.totalMembers ?? 0
+  const level1Count = teamData?.level1Count ?? 0
+  const level2Count = teamData?.level2Count ?? 0
+  const level1Members = teamData?.level1Members || []
+  const level2Members = teamData?.level2Members || []
+
+  // Readymade catchy invite message
+  const shareMessage = `👋 Hello Friend! 
+HeroPay app se roz kamao high returns (9.5% + ₹6 extra yield per order)! 💰
+
+📲 Download App: ${downloadUrl}
+🎁 My Referral Code: ${userCode}
+
+Sign up karte waqt mera Referral Code daalo aur turant earning start karo! 🚀`
+
+  const handleCopyCode = () => {
+    navigator.clipboard?.writeText?.(userCode)
+    setCopiedCode(true)
+    onShareInvite?.('Referral code copied!')
+    setTimeout(() => setCopiedCode(false), 2000)
+  }
+
+  const handleCopyLink = () => {
+    navigator.clipboard?.writeText?.(downloadUrl)
+    setCopiedLink(true)
+    onShareInvite?.('Download link copied!')
+    setTimeout(() => setCopiedLink(false), 2000)
+  }
+
+  const handleCopyFullMessage = () => {
+    navigator.clipboard?.writeText?.(shareMessage)
+    setCopiedMsg(true)
+    onShareInvite?.('Invite message copied!')
+    setTimeout(() => setCopiedMsg(false), 2500)
+  }
+
+  const handleWhatsAppShare = () => {
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`
+    window.open(whatsappUrl, '_blank')
+  }
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'HeroPay - Earn Daily with HeroPay',
+          text: shareMessage,
+          url: downloadUrl
+        })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
+    }
+    // Fallback to copying full message
+    handleCopyFullMessage()
   }
 
   const renderAvatar = (member) => {
-    if (member.avatarType === 'letter') {
-      return (
-        <div
-          className="member-avatar-circle"
-          style={{ background: member.avatarBg, color: member.avatarColor }}
-        >
-          <span>{member.avatarText}</span>
-        </div>
-      )
-    }
-
-    if (member.avatarType === 'avatar1') {
-      return (
-        <div className="member-avatar-circle avatar-blue">
-          <div className="avatar-head" />
-          <div className="avatar-body body-blue" />
-        </div>
-      )
-    }
-
-    if (member.avatarType === 'avatar2') {
-      return (
-        <div className="member-avatar-circle avatar-peach">
-          <div className="avatar-head" />
-          <div className="avatar-body body-orange" />
-        </div>
-      )
-    }
-
+    const initial = (member.name || member.avatarText || 'U')[0].toUpperCase()
     return (
-      <div className="member-avatar-circle avatar-dark">
-        <div className="avatar-head" />
-        <div className="avatar-body body-dark" />
+      <div className="member-avatar-circle" style={{ background: 'linear-gradient(135deg, #FF6810, #FF3D00)', color: '#FFFFFF' }}>
+        <span>{initial}</span>
       </div>
     )
   }
@@ -92,10 +139,11 @@ export default function TeamScreen({ onShareInvite, user }) {
         <button
           type="button"
           className="team-user-plus-btn"
-          onClick={() => setIsQrModalOpen(true)}
-          aria-label="Invite new member"
+          onClick={handleNativeShare}
+          aria-label="Share invite"
+          title="Share referral link"
         >
-          <UserPlus size={19} strokeWidth={2.2} />
+          <Share2 size={18} strokeWidth={2.2} />
         </button>
       </header>
 
@@ -109,7 +157,7 @@ export default function TeamScreen({ onShareInvite, user }) {
         <div className="team-hero-content">
           <div className="team-hero-left">
             <span className="team-members-label">Total Members</span>
-            <span className="team-members-count">4</span>
+            <span className="team-members-count">{totalMembers}</span>
 
             <div className="team-levels-row">
               <div className="team-level-item">
@@ -118,7 +166,7 @@ export default function TeamScreen({ onShareInvite, user }) {
                 </div>
                 <div className="level-text-meta">
                   <span className="level-name">Level 1</span>
-                  <span className="level-val">4</span>
+                  <span className="level-val">{level1Count}</span>
                 </div>
               </div>
 
@@ -128,7 +176,7 @@ export default function TeamScreen({ onShareInvite, user }) {
                 </div>
                 <div className="level-text-meta">
                   <span className="level-name">Level 2</span>
-                  <span className="level-val">0</span>
+                  <span className="level-val">{level2Count}</span>
                 </div>
               </div>
             </div>
@@ -149,7 +197,7 @@ export default function TeamScreen({ onShareInvite, user }) {
             <button
               type="button"
               className="team-invite-btn"
-              onClick={() => setIsQrModalOpen(true)}
+              onClick={handleNativeShare}
             >
               <span>Invite Now</span>
               <ArrowRight size={15} strokeWidth={2.6} />
@@ -158,50 +206,92 @@ export default function TeamScreen({ onShareInvite, user }) {
         </div>
       </div>
 
-      {/* Referral Link Card */}
+      {/* Referral Code & App Link Card */}
       <div className="team-referral-card">
-        <div className="team-referral-header">
+        {/* Row 1: Referral Code display */}
+        <div className="team-code-card-header">
           <div className="referral-link-icon-wrap">
-            <LinkIcon size={16} strokeWidth={2.4} className="referral-link-icon" />
+            <Gift size={16} strokeWidth={2.4} className="referral-link-icon" />
           </div>
-          <span className="referral-header-title">Your Referral Link</span>
+          <div className="team-code-header-text">
+            <span className="referral-header-title">Your Referral Code</span>
+            <span className="referral-header-sub">Friends enter this code during signup</span>
+          </div>
         </div>
 
+        <div className="team-code-display-box">
+          <span className="team-code-value">{userCode}</span>
+          <button
+            type="button"
+            className="team-copy-btn team-copy-btn--highlight"
+            onClick={handleCopyCode}
+          >
+            {copiedCode ? (
+              <>
+                <Check size={14} color="#10B981" strokeWidth={2.6} />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy size={14} />
+                <span>Copy Code</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Row 2: App Download Link */}
+        <div className="team-link-row-label">App Download Link</div>
         <div className="team-referral-input-row">
           <input
             type="text"
             readOnly
-            value={referralUrl}
+            value={downloadUrl}
             className="team-referral-input"
           />
 
           <button
             type="button"
             className="team-copy-btn"
-            onClick={handleCopy}
+            onClick={handleCopyLink}
           >
-            {copied ? (
+            {copiedLink ? (
               <>
-                <Check size={14} color="var(--color-success)" strokeWidth={2.6} />
+                <Check size={14} color="#10B981" strokeWidth={2.6} />
                 <span>Copied</span>
               </>
             ) : (
-              <span>Copy</span>
+              <>
+                <Copy size={14} />
+                <span>Copy Link</span>
+              </>
             )}
+          </button>
+        </div>
+
+        {/* Row 3: Instant Share Buttons */}
+        <div className="team-share-btn-grid">
+          <button
+            type="button"
+            className="team-whatsapp-share-btn"
+            onClick={handleWhatsAppShare}
+          >
+            <MessageSquare size={16} />
+            <span>Share on WhatsApp</span>
           </button>
 
           <button
             type="button"
-            className="team-qr-btn"
-            onClick={() => setIsQrModalOpen(true)}
-            aria-label="View QR Code"
+            className="team-full-share-btn"
+            onClick={handleNativeShare}
           >
-            <QrCode size={18} strokeWidth={2.2} />
+            <Share2 size={16} />
+            <span>{copiedMsg ? 'Message Copied!' : 'Share Message'}</span>
           </button>
         </div>
 
         <p className="team-referral-hint">
-          Share your link and invite your friends to earn rewards
+          Invite friends to earn 10% lifetime team rewards from their commission!
         </p>
       </div>
 
@@ -212,7 +302,7 @@ export default function TeamScreen({ onShareInvite, user }) {
           className={`team-level-tab ${activeTab === 'level1' ? 'active' : ''}`}
           onClick={() => setActiveTab('level1')}
         >
-          Level 1 List (4)
+          Level 1 List ({level1Count})
         </button>
 
         <button
@@ -220,7 +310,7 @@ export default function TeamScreen({ onShareInvite, user }) {
           className={`team-level-tab ${activeTab === 'level2' ? 'active' : ''}`}
           onClick={() => setActiveTab('level2')}
         >
-          Level 2 List (0)
+          Level 2 List ({level2Count})
         </button>
       </div>
 
@@ -235,120 +325,99 @@ export default function TeamScreen({ onShareInvite, user }) {
 
         {/* List Content */}
         {activeTab === 'level1' ? (
-          <div className="team-rows-list">
-            {level1Members.map((member) => (
-              <div
-                key={member.id}
-                className="team-member-row"
-                onClick={() => setSelectedMember(member)}
-              >
-                {/* User Info */}
-                <div className="member-info-col">
-                  {renderAvatar(member)}
-                  <div className="member-meta">
-                    <span className="member-phone">{member.phone}</span>
-                    <span className="member-date">{member.date}</span>
+          level1Members.length > 0 ? (
+            <div className="team-rows-list">
+              {level1Members.map((member) => (
+                <div
+                  key={member.id}
+                  className="team-member-row"
+                  onClick={() => setSelectedMember(member)}
+                >
+                  {/* User Info */}
+                  <div className="member-info-col">
+                    {renderAvatar(member)}
+                    <div className="member-meta">
+                      <span className="member-phone">{member.phone}</span>
+                      <span className="member-date">{member.date}</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* His Commission */}
-                <div className="member-commission-col">
-                  <RewardCoin size={14} />
-                  <span className="commission-val">{member.commission.toFixed(2)}</span>
-                </div>
-
-                {/* My Reward */}
-                <div className="member-reward-col">
-                  <div className="reward-value-box">
+                  {/* His Commission */}
+                  <div className="member-commission-col">
                     <RewardCoin size={14} />
-                    <span className="reward-val">{member.reward.toFixed(2)}</span>
+                    <span className="commission-val">{Number(member.commission).toFixed(2)}</span>
                   </div>
-                  <ChevronRight size={16} strokeWidth={2.2} className="member-chevron" />
+
+                  {/* My Reward */}
+                  <div className="member-reward-col">
+                    <div className="reward-value-box">
+                      <RewardCoin size={14} />
+                      <span className="reward-val">{Number(member.reward).toFixed(2)}</span>
+                    </div>
+                    <ChevronRight size={16} strokeWidth={2.2} className="member-chevron" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="team-empty-state">
+              <Users size={32} color="#94A3B8" style={{ marginBottom: '8px' }} />
+              <p>No Level 1 members yet.</p>
+              <span>Share your referral code <strong>{userCode}</strong> with friends to start building your team!</span>
+              <button
+                type="button"
+                className="team-empty-invite-btn"
+                onClick={handleNativeShare}
+              >
+                <Share2 size={14} />
+                <span>Invite Friends Now</span>
+              </button>
+            </div>
+          )
         ) : (
-          <div className="team-empty-state">
-            <p>No Level 2 members yet.</p>
-            <span>When your Level 1 referrals invite friends, they will appear here!</span>
-          </div>
+          level2Members.length > 0 ? (
+            <div className="team-rows-list">
+              {level2Members.map((member) => (
+                <div
+                  key={member.id}
+                  className="team-member-row"
+                  onClick={() => setSelectedMember(member)}
+                >
+                  {/* User Info */}
+                  <div className="member-info-col">
+                    {renderAvatar(member)}
+                    <div className="member-meta">
+                      <span className="member-phone">{member.phone}</span>
+                      <span className="member-date">{member.date}</span>
+                    </div>
+                  </div>
+
+                  {/* His Commission */}
+                  <div className="member-commission-col">
+                    <RewardCoin size={14} />
+                    <span className="commission-val">{Number(member.commission).toFixed(2)}</span>
+                  </div>
+
+                  {/* My Reward */}
+                  <div className="member-reward-col">
+                    <div className="reward-value-box">
+                      <RewardCoin size={14} />
+                      <span className="reward-val">{Number(member.reward).toFixed(2)}</span>
+                    </div>
+                    <ChevronRight size={16} strokeWidth={2.2} className="member-chevron" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="team-empty-state">
+              <Users size={32} color="#94A3B8" style={{ marginBottom: '8px' }} />
+              <p>No Level 2 members yet.</p>
+              <span>When your Level 1 referrals invite friends, they will automatically appear here!</span>
+            </div>
+          )
         )}
       </div>
-
-      {/* Bottom Promo Banner: Invite More, Earn More */}
-      <div
-        className="team-promo-banner"
-        onClick={() => setIsQrModalOpen(true)}
-      >
-        <div className="team-banner-art">
-          <div className="team-banner-chart">
-            <div className="chart-step step-1" />
-            <div className="chart-step step-2" />
-            <div className="chart-step step-3" />
-            <div className="chart-arrow-orange">↗</div>
-          </div>
-        </div>
-
-        <div className="team-banner-text">
-          <h4 className="team-banner-title">Invite More, Earn More</h4>
-          <p className="team-banner-sub">Build a bigger team and unlock higher rewards</p>
-        </div>
-
-        <div className="team-banner-arrow-btn">
-          <ChevronRight size={18} strokeWidth={2.4} color="#FF6810" />
-        </div>
-      </div>
-
-      {/* QR Code & Share Invite Modal */}
-      {isQrModalOpen && (
-        <div className="team-modal-backdrop" onClick={() => setIsQrModalOpen(false)}>
-          <div className="team-modal-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="team-sheet-handle" />
-            <div className="team-sheet-header">
-              <h3>Invite Friends to HeroPay</h3>
-              <button
-                type="button"
-                className="team-sheet-close"
-                onClick={() => setIsQrModalOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="team-qr-box">
-              {/* Stylized QR Code Visual */}
-              <div className="qr-code-display">
-                <QrCode size={160} strokeWidth={1.8} color="#0F172A" />
-                <div className="qr-center-logo">
-                  <HeroPayLogo size={22} alt="" />
-                </div>
-              </div>
-              <p className="qr-code-code">Referral Code: <strong>{userCode}</strong></p>
-            </div>
-
-            <div className="team-share-actions">
-              <button
-                type="button"
-                className="team-share-btn-primary"
-                onClick={handleCopy}
-              >
-                <Copy size={16} />
-                <span>{copied ? 'Link Copied!' : 'Copy Referral Link'}</span>
-              </button>
-
-              <button
-                type="button"
-                className="team-share-btn-whatsapp"
-                onClick={() => window.open(`https://api.whatsapp.com/send?text=Join%20HeroPay%20and%20earn%20rewards%20together!%20${referralUrl}`, '_blank')}
-              >
-                <Share2 size={16} />
-                <span>Share via WhatsApp</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Member Details Modal */}
       {selectedMember && (
@@ -376,15 +445,15 @@ export default function TeamScreen({ onShareInvite, user }) {
                 <strong>{selectedMember.date}</strong>
               </div>
               <div className="details-row">
-                <span>His Commission</span>
+                <span>Member Commission</span>
                 <strong style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <RewardCoin size={14} /> {selectedMember.commission.toFixed(2)}
+                  <RewardCoin size={14} /> {Number(selectedMember.commission).toFixed(2)}
                 </strong>
               </div>
               <div className="details-row">
-                <span>My Reward (Direct Referral)</span>
-                <strong style={{ color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <RewardCoin size={14} /> {selectedMember.reward.toFixed(2)}
+                <span>My Team Reward</span>
+                <strong style={{ color: '#FF5000', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <RewardCoin size={14} /> {Number(selectedMember.reward).toFixed(2)}
                 </strong>
               </div>
 

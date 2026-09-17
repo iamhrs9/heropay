@@ -26,7 +26,13 @@ const userSchema = new mongoose.Schema(
     },
     referralCode: {
       type: String,
-      default: ''
+      default: '',
+      trim: true
+    },
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
     },
     // Wallet
     balance: {
