@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import LoginScreen from './screens/LoginScreen'
 import SignupScreen from './screens/SignupScreen'
 import WithdrawUPIScreen from './screens/WithdrawUPIScreen'
@@ -39,6 +39,7 @@ export default function App() {
   const [returnScreen, setReturnScreen] = useState('sell')
   const [recordInitialTab, setRecordInitialTab] = useState('sell')
   const [toastMessage, setToastMessage] = useState(null)
+  const autoApprovedOrdersRef = useRef(new Set())
 
   // Logged in user (from MongoDB via JWT)
   const [loggedInUser, setLoggedInUser] = useState(null)
@@ -631,14 +632,56 @@ export default function App() {
   useEffect(() => {
     const autoApprovalInterval = setInterval(() => {
       const now = Date.now()
-      pendingOrdersList.forEach((order) => {
-        if (order.autoApproveAt && now >= order.autoApproveAt) {
-          handleApproveOrder(order.id, true)
-        }
-      })
+      const expiredList = pendingOrdersList.filter(
+        (order) =>
+          order.autoApproveAt &&
+          now >= order.autoApproveAt &&
+          !autoApprovedOrdersRef.current.has(order.id)
+      )
+
+      if (expiredList.length === 0) return
+
+      // Guard against duplicate processing
+      expiredList.forEach((o) => autoApprovedOrdersRef.current.add(o.id))
+
+      // Optimistically mark as Success in UI immediately to stop Pay Now/Cancel flashing
+      const expiredIds = new Set(expiredList.map((o) => o.id))
+      setTransactionRecords((prev) =>
+        prev.map((tx) => (expiredIds.has(tx.id) ? { ...tx, status: 'Success' } : tx))
+      )
+      setPendingOrdersList((prev) => prev.filter((o) => !expiredIds.has(o.id)))
+
+      const token = localStorage.getItem('hp_token')
+      if (token) {
+        fetch('/api/orders/auto-approve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.approvedCount > 0) {
+              const names = expiredList.map((o) => o.id).join(', ')
+              const totalCoins = expiredList.reduce((acc, o) => acc + (o.totalCoins || 0), 0)
+              showToast(`⚡ Order ${names} Auto-Approved! +${totalCoins.toFixed(2)} Coins Credited!`)
+              if (data.newBalance !== undefined) {
+                setUserBalance(data.newBalance)
+              }
+              loadUserOrders(token)
+            }
+          })
+          .catch(() => {
+            // Local fallback
+            expiredList.forEach((order) => handleApproveOrder(order.id, true))
+          })
+      } else {
+        expiredList.forEach((order) => handleApproveOrder(order.id, true))
+      }
     }, 2500)
     return () => clearInterval(autoApprovalInterval)
-  }, [pendingOrdersList])
+  }, [pendingOrdersList, loadUserOrders])
 
   // Navigate to Payment Gateway & Save Order immediately to MongoDB
   const handleProceedToPayment = (order) => {

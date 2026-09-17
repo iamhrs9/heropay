@@ -95,18 +95,28 @@ export default function PaymentGatewayScreen({
     totalCoins: 3126.75
   }
 
-  // Check if UPI is configured for this account
+  // Check if UPI and Bank are configured for this account
   const hasUpi = Boolean(
     payConfig !== null
       ? payConfig?.upiId && payConfig.upiId.trim() !== ''
       : (import.meta.env.VITE_UPI_ID && import.meta.env.VITE_UPI_ID.trim() !== '')
   )
 
+  const hasBank = Boolean(
+    payConfig !== null
+      ? payConfig?.accountNumber && payConfig.accountNumber.trim() !== '' && payConfig.accountNumber !== '—'
+      : (import.meta.env.VITE_ACCOUNT_NUMBER && import.meta.env.VITE_ACCOUNT_NUMBER.trim() !== '')
+  )
+
   useEffect(() => {
-    if (payConfig && (!payConfig.upiId || !payConfig.upiId.trim())) {
-      setPaymentMethod('bank')
+    if (payConfig) {
+      if (!hasBank && hasUpi) {
+        setPaymentMethod('upi')
+      } else if (hasBank && !hasUpi) {
+        setPaymentMethod('bank')
+      }
     }
-  }, [payConfig])
+  }, [payConfig, hasBank, hasUpi])
 
   // Bank details: live from MongoDB, fallback to .env, fallback to placeholder
   const bankDetails = {
@@ -241,8 +251,8 @@ export default function PaymentGatewayScreen({
           </div>
         </div>
 
-        {/* Method Switcher Tabs (Only shown if UPI is configured on this account) */}
-        {hasUpi && (
+        {/* Method Switcher Tabs (Only shown if BOTH Bank and UPI are configured) */}
+        {hasBank && hasUpi && (
           <div className="payment-methods-tabs">
             <button
               type="button"
@@ -265,7 +275,7 @@ export default function PaymentGatewayScreen({
         )}
 
         {/* Method Content Card */}
-        {(!hasUpi || paymentMethod === 'bank') ? (
+        {(!hasUpi || (paymentMethod === 'bank' && hasBank)) ? (
           <div className="payment-details-card">
             <div className="payment-card-banner">
               <Building2 size={18} color="#FF5000" />

@@ -206,8 +206,9 @@ export default function RecordScreen({
 
             <div className="record-cards-stack">
               {filteredTransactions.map((tx) => {
+                const isExpired = tx.autoApproveAt && Date.now() >= new Date(tx.autoApproveAt).getTime()
                 const isPendingBuy = tx.type === 'buy' && tx.status === 'Pending'
-                const isProofNeeded = isPendingBuy && !tx.proofSubmitted
+                const isProofNeeded = isPendingBuy && !tx.proofSubmitted && !isExpired
 
                 return (
                   <div
@@ -248,7 +249,7 @@ export default function RecordScreen({
                           </span>
                         </div>
                         <span className={`tx-status-badge ${isProofNeeded ? 'pay-now' : (tx.status ? tx.status.toLowerCase() : '')}`}>
-                          {isProofNeeded ? 'Pay Now' : tx.status}
+                          {isProofNeeded ? 'Pay Now' : (isPendingBuy && isExpired ? 'Approving...' : tx.status)}
                         </span>
                       </div>
                     </div>

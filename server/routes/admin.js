@@ -233,6 +233,7 @@ router.post('/payment-accounts', protect, adminOnly, async (req, res) => {
   try {
     const {
       label,
+      methodType: rawMethodType,
       bankName,
       accountNumber,
       accountHolder,
@@ -248,16 +249,39 @@ router.post('/payment-accounts', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'Account label/name is required.' })
     }
 
+    const cleanUpi = upiId?.trim() || ''
+    const cleanAcc = accountNumber?.trim() || ''
+
+    let methodType = rawMethodType
+    if (!methodType) {
+      if (cleanUpi && !cleanAcc) methodType = 'upi'
+      else if (cleanAcc && !cleanUpi) methodType = 'bank'
+      else methodType = 'both'
+    }
+
+    if (methodType === 'upi' && !cleanUpi) {
+      return res.status(400).json({ message: 'UPI ID is required for UPI accounts.' })
+    }
+
+    if (methodType === 'bank' && (!cleanAcc || !bankName?.trim() || !ifscCode?.trim())) {
+      return res.status(400).json({ message: 'Bank Name, Account Number and IFSC Code are required for Bank accounts.' })
+    }
+
+    if (methodType === 'both' && (!cleanUpi || !cleanAcc)) {
+      return res.status(400).json({ message: 'Both UPI ID and Bank Account details are required.' })
+    }
+
     const newAccount = await PaymentAccount.create({
       label: label.trim(),
-      bankName: bankName?.trim() || '',
-      accountNumber: accountNumber?.trim() || '',
-      accountHolder: accountHolder?.trim() || '',
-      ifscCode: ifscCode?.trim() || '',
-      accountType: accountType?.trim() || 'Current Account',
-      bankBranch: bankBranch?.trim() || '',
-      upiId: upiId?.trim() || '',
-      upiPayeeName: upiPayeeName?.trim() || '',
+      methodType,
+      bankName: methodType === 'upi' ? '' : (bankName?.trim() || ''),
+      accountNumber: methodType === 'upi' ? '' : cleanAcc,
+      accountHolder: methodType === 'upi' ? '' : (accountHolder?.trim() || ''),
+      ifscCode: methodType === 'upi' ? '' : (ifscCode?.trim() || ''),
+      accountType: methodType === 'upi' ? '' : (accountType?.trim() || 'Current Account'),
+      bankBranch: methodType === 'upi' ? '' : (bankBranch?.trim() || ''),
+      upiId: methodType === 'bank' ? '' : cleanUpi,
+      upiPayeeName: methodType === 'bank' ? '' : (upiPayeeName?.trim() || ''),
       isActive: isActive !== undefined ? Boolean(isActive) : true
     })
 
@@ -276,6 +300,7 @@ router.patch('/payment-accounts/:id', protect, adminOnly, async (req, res) => {
 
     const {
       label,
+      methodType,
       bankName,
       accountNumber,
       accountHolder,
@@ -288,6 +313,7 @@ router.patch('/payment-accounts/:id', protect, adminOnly, async (req, res) => {
     } = req.body
 
     if (label !== undefined) account.label = label.trim()
+    if (methodType !== undefined) account.methodType = methodType
     if (bankName !== undefined) account.bankName = bankName.trim()
     if (accountNumber !== undefined) account.accountNumber = accountNumber.trim()
     if (accountHolder !== undefined) account.accountHolder = accountHolder.trim()
@@ -297,6 +323,13 @@ router.patch('/payment-accounts/:id', protect, adminOnly, async (req, res) => {
     if (upiId !== undefined) account.upiId = upiId.trim()
     if (upiPayeeName !== undefined) account.upiPayeeName = upiPayeeName.trim()
     if (isActive !== undefined) account.isActive = Boolean(isActive)
+
+    // Re-evaluate methodType if needed
+    if (!account.methodType) {
+      if (account.upiId && !account.accountNumber) account.methodType = 'upi'
+      else if (account.accountNumber && !account.upiId) account.methodType = 'bank'
+      else account.methodType = 'both'
+    }
 
     await account.save()
     res.json({ message: 'Payment account updated successfully.', account })

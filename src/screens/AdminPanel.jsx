@@ -30,6 +30,7 @@ export default function AdminPanel() {
   const [isSavingAccount, setIsSavingAccount] = useState(false)
   const [accountForm, setAccountForm] = useState({
     label: '',
+    methodType: 'upi',
     bankName: '',
     accountNumber: '',
     accountHolder: '',
@@ -111,6 +112,7 @@ export default function AdminPanel() {
     setEditingAccountId(null)
     setAccountForm({
       label: '',
+      methodType: 'upi',
       bankName: '',
       accountNumber: '',
       accountHolder: '',
@@ -126,8 +128,15 @@ export default function AdminPanel() {
 
   const handleOpenEditAccount = (acc) => {
     setEditingAccountId(acc._id)
+    let mType = acc.methodType
+    if (!mType) {
+      if (acc.upiId && !acc.accountNumber) mType = 'upi'
+      else if (acc.accountNumber && !acc.upiId) mType = 'bank'
+      else mType = 'both'
+    }
     setAccountForm({
       label: acc.label || '',
+      methodType: mType,
       bankName: acc.bankName || '',
       accountNumber: acc.accountNumber || '',
       accountHolder: acc.accountHolder || '',
@@ -147,6 +156,28 @@ export default function AdminPanel() {
       showToast('Account label is required', 'error')
       return
     }
+
+    if (accountForm.methodType === 'upi' && !accountForm.upiId.trim()) {
+      showToast('UPI ID is required for UPI accounts', 'error')
+      return
+    }
+
+    if (accountForm.methodType === 'bank' && (!accountForm.accountNumber.trim() || !accountForm.bankName.trim() || !accountForm.ifscCode.trim())) {
+      showToast('Bank Name, Account Number and IFSC Code are required', 'error')
+      return
+    }
+
+    if (accountForm.methodType === 'both') {
+      if (!accountForm.upiId.trim()) {
+        showToast('UPI ID is required', 'error')
+        return
+      }
+      if (!accountForm.accountNumber.trim() || !accountForm.bankName.trim() || !accountForm.ifscCode.trim()) {
+        showToast('Bank details are required for Both', 'error')
+        return
+      }
+    }
+
     setIsSavingAccount(true)
     try {
       const url = editingAccountId
@@ -591,8 +622,7 @@ export default function AdminPanel() {
                 </span>
               </div>
               <p className="ap-accounts-subtitle">
-                Each user making a payment will automatically see a <strong>random active bank account</strong>.
-                If an account has no UPI ID configured, the UPI tab is automatically hidden for that user.
+                Each user making a payment will automatically see a <strong>random active payment account</strong> (Bank, UPI, or Both).
               </p>
             </div>
             <button
@@ -600,83 +630,99 @@ export default function AdminPanel() {
               className="ap-btn-add-account"
               onClick={handleOpenAddAccount}
             >
-              <Plus size={16} /> Add Bank Account
+              <Plus size={16} /> Add Payment Account
             </button>
           </div>
 
           {paymentAccounts.length === 0 ? (
-            <div className="ap-empty">No payment accounts found. Click "Add Bank Account" to create one.</div>
+            <div className="ap-empty">No payment accounts found. Click "Add Payment Account" to create one.</div>
           ) : (
             <div className="ap-accounts-grid">
-              {paymentAccounts.map((acc) => (
-                <div
-                  key={acc._id}
-                  className={`ap-account-card ${!acc.isActive ? 'ap-account-card--inactive' : ''}`}
-                >
-                  <div className="ap-account-card-top">
-                    <div className="ap-account-label-group">
-                      <span className="ap-account-label">{acc.label}</span>
-                      <div className="ap-account-badges">
-                        <span className={`ap-status-pill ${acc.isActive ? 'active' : 'inactive'}`}>
-                          {acc.isActive ? 'Active (Live)' : 'Inactive'}
-                        </span>
-                        {acc.upiId?.trim() ? (
-                          <span className="ap-upi-pill ap-upi-pill--enabled">
-                            <Smartphone size={12} /> UPI Enabled
-                          </span>
-                        ) : (
-                          <span className="ap-upi-pill ap-upi-pill--disabled">
-                            Bank Only (UPI Hidden)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+              {paymentAccounts.map((acc) => {
+                const isUpiOnly = acc.methodType === 'upi' || (acc.upiId && !acc.accountNumber)
+                const isBankOnly = acc.methodType === 'bank' || (acc.accountNumber && !acc.upiId)
+                const isBoth = acc.methodType === 'both' || (acc.upiId && acc.accountNumber)
 
-                  <div className="ap-account-details-list">
-                    <div className="ap-acc-row">
-                      <span className="ap-acc-key">Bank Name</span>
-                      <span className="ap-acc-val ap-acc-val--bold">{acc.bankName || '—'}</span>
-                    </div>
-                    <div className="ap-acc-row">
-                      <span className="ap-acc-key">Account Number</span>
-                      <span className="ap-acc-val font-mono highlight">{acc.accountNumber || '—'}</span>
-                    </div>
-                    <div className="ap-acc-row">
-                      <span className="ap-acc-key">IFSC Code</span>
-                      <span className="ap-acc-val font-mono highlight">{acc.ifscCode || '—'}</span>
-                    </div>
-                    <div className="ap-acc-row">
-                      <span className="ap-acc-key">Account Holder</span>
-                      <span className="ap-acc-val">{acc.accountHolder || '—'}</span>
-                    </div>
-                    <div className="ap-acc-row">
-                      <span className="ap-acc-key">Account Type</span>
-                      <span className="ap-acc-val">{acc.accountType || 'Current Account'}</span>
-                    </div>
-                    {acc.bankBranch && (
-                      <div className="ap-acc-row">
-                        <span className="ap-acc-key">Branch</span>
-                        <span className="ap-acc-val">{acc.bankBranch}</span>
+                return (
+                  <div
+                    key={acc._id}
+                    className={`ap-account-card ${!acc.isActive ? 'ap-account-card--inactive' : ''}`}
+                  >
+                    <div className="ap-account-card-top">
+                      <div className="ap-account-label-group">
+                        <span className="ap-account-label">{acc.label}</span>
+                        <div className="ap-account-badges">
+                          <span className={`ap-status-pill ${acc.isActive ? 'active' : 'inactive'}`}>
+                            {acc.isActive ? 'Active (Live)' : 'Inactive'}
+                          </span>
+                          {isUpiOnly && (
+                            <span className="ap-method-pill ap-method-pill--upi">
+                              <Smartphone size={12} /> UPI Only
+                            </span>
+                          )}
+                          {isBankOnly && (
+                            <span className="ap-method-pill ap-method-pill--bank">
+                              <Building2 size={12} /> Bank Only
+                            </span>
+                          )}
+                          {isBoth && (
+                            <span className="ap-method-pill ap-method-pill--both">
+                              <Shuffle size={12} /> Bank + UPI
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <div className="ap-acc-row ap-acc-row--upi">
-                      <span className="ap-acc-key">UPI ID</span>
-                      <span className="ap-acc-val">
-                        {acc.upiId?.trim() ? (
-                          <span className="ap-upi-id-text">{acc.upiId}</span>
-                        ) : (
-                          <em className="ap-text-dim">None (User sees Bank only)</em>
-                        )}
-                      </span>
                     </div>
-                    {acc.upiPayeeName && (
-                      <div className="ap-acc-row">
-                        <span className="ap-acc-key">UPI Payee</span>
-                        <span className="ap-acc-val">{acc.upiPayeeName}</span>
-                      </div>
-                    )}
-                  </div>
+
+                    <div className="ap-account-details-list">
+                      {/* Show UPI details if present */}
+                      {(isUpiOnly || isBoth) && (
+                        <div className="ap-acc-row ap-acc-row--upi">
+                          <span className="ap-acc-key">UPI ID</span>
+                          <span className="ap-acc-val font-mono highlight">{acc.upiId || '—'}</span>
+                        </div>
+                      )}
+                      {(isUpiOnly || isBoth) && acc.upiPayeeName && (
+                        <div className="ap-acc-row">
+                          <span className="ap-acc-key">UPI Payee</span>
+                          <span className="ap-acc-val">{acc.upiPayeeName}</span>
+                        </div>
+                      )}
+
+                      {/* Show Bank details if present */}
+                      {(isBankOnly || isBoth) && (
+                        <>
+                          <div className="ap-acc-row">
+                            <span className="ap-acc-key">Bank Name</span>
+                            <span className="ap-acc-val ap-acc-val--bold">{acc.bankName || '—'}</span>
+                          </div>
+                          <div className="ap-acc-row">
+                            <span className="ap-acc-key">Account Number</span>
+                            <span className="ap-acc-val font-mono highlight">{acc.accountNumber || '—'}</span>
+                          </div>
+                          <div className="ap-acc-row">
+                            <span className="ap-acc-key">IFSC Code</span>
+                            <span className="ap-acc-val font-mono highlight">{acc.ifscCode || '—'}</span>
+                          </div>
+                          <div className="ap-acc-row">
+                            <span className="ap-acc-key">Account Holder</span>
+                            <span className="ap-acc-val">{acc.accountHolder || '—'}</span>
+                          </div>
+                          {acc.accountType && (
+                            <div className="ap-acc-row">
+                              <span className="ap-acc-key">Account Type</span>
+                              <span className="ap-acc-val">{acc.accountType}</span>
+                            </div>
+                          )}
+                          {acc.bankBranch && (
+                            <div className="ap-acc-row">
+                              <span className="ap-acc-key">Branch</span>
+                              <span className="ap-acc-val">{acc.bankBranch}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
 
                   <div className="ap-account-card-actions">
                     <button
@@ -707,7 +753,8 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 </div>
-              ))}
+              )
+            })}
             </div>
           )}
         </div>
@@ -829,7 +876,7 @@ export default function AdminPanel() {
         <div className="ap-modal-overlay" onClick={() => setIsAccountModalOpen(false)}>
           <div className="ap-modal ap-modal--account" onClick={(e) => e.stopPropagation()}>
             <div className="ap-modal-header">
-              <h2>{editingAccountId ? 'Edit Payment Account' : 'Add New Bank Account'}</h2>
+              <h2>{editingAccountId ? 'Edit Payment Account' : 'Add Payment Account'}</h2>
               <button className="ap-modal-close" onClick={() => setIsAccountModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -840,7 +887,7 @@ export default function AdminPanel() {
                 <label>Account Label / Nickname *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Primary ICICI, HDFC Backup"
+                  placeholder="e.g. Primary UPI, HDFC Bank"
                   value={accountForm.label}
                   onChange={(e) => setAccountForm(f => ({ ...f, label: e.target.value }))}
                   required
@@ -848,95 +895,137 @@ export default function AdminPanel() {
                 <small className="ap-input-hint">Friendly label shown in admin panel</small>
               </div>
 
-              <div className="ap-settings-grid">
-                <div className="ap-form-group">
-                  <label>Bank Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ICICI Bank Ltd"
-                    value={accountForm.bankName}
-                    onChange={(e) => setAccountForm(f => ({ ...f, bankName: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="ap-form-group">
-                  <label>Account Number *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 001205018924"
-                    value={accountForm.accountNumber}
-                    onChange={(e) => setAccountForm(f => ({ ...f, accountNumber: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="ap-form-group">
-                  <label>Account Holder Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. HEROPAY TECH SOLUTIONS PVT LTD"
-                    value={accountForm.accountHolder}
-                    onChange={(e) => setAccountForm(f => ({ ...f, accountHolder: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="ap-form-group">
-                  <label>IFSC Code *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ICIC0000012"
-                    value={accountForm.ifscCode}
-                    onChange={(e) => setAccountForm(f => ({ ...f, ifscCode: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="ap-form-group">
-                  <label>Account Type</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Current Account"
-                    value={accountForm.accountType}
-                    onChange={(e) => setAccountForm(f => ({ ...f, accountType: e.target.value }))}
-                  />
-                </div>
-                <div className="ap-form-group">
-                  <label>Bank Branch</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Connaught Place, New Delhi"
-                    value={accountForm.bankBranch}
-                    onChange={(e) => setAccountForm(f => ({ ...f, bankBranch: e.target.value }))}
-                  />
+              {/* Account Type / Method Selector */}
+              <div className="ap-form-group">
+                <label>Payment Method Type *</label>
+                <div className="ap-method-selector">
+                  <button
+                    type="button"
+                    className={`ap-method-choice ${accountForm.methodType === 'upi' ? 'selected' : ''}`}
+                    onClick={() => setAccountForm(f => ({ ...f, methodType: 'upi' }))}
+                  >
+                    <Smartphone size={16} />
+                    <span>UPI Only</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`ap-method-choice ${accountForm.methodType === 'bank' ? 'selected' : ''}`}
+                    onClick={() => setAccountForm(f => ({ ...f, methodType: 'bank' }))}
+                  >
+                    <Building2 size={16} />
+                    <span>Bank Account Only</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`ap-method-choice ${accountForm.methodType === 'both' ? 'selected' : ''}`}
+                    onClick={() => setAccountForm(f => ({ ...f, methodType: 'both' }))}
+                  >
+                    <Shuffle size={16} />
+                    <span>Both (Bank + UPI)</span>
+                  </button>
                 </div>
               </div>
 
-              {/* UPI section inside modal */}
-              <div className="ap-form-subheading">
-                <Smartphone size={15} />
-                <span>UPI Transfer Details (Optional)</span>
-              </div>
-              <div className="ap-upi-explainer">
-                💡 <strong>Leave UPI ID empty</strong> if this account should NOT offer UPI payment to users (the UPI tab will be automatically hidden).
-              </div>
-              <div className="ap-settings-grid">
-                <div className="ap-form-group">
-                  <label>UPI ID (Leave blank to hide UPI tab)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. heropay@icici or empty"
-                    value={accountForm.upiId}
-                    onChange={(e) => setAccountForm(f => ({ ...f, upiId: e.target.value }))}
-                  />
+              {/* UPI Section (Shown for UPI Only and Both) */}
+              {(accountForm.methodType === 'upi' || accountForm.methodType === 'both') && (
+                <div className="ap-method-section">
+                  <div className="ap-form-subheading">
+                    <Smartphone size={15} />
+                    <span>UPI Transfer Details</span>
+                  </div>
+                  <div className="ap-settings-grid">
+                    <div className="ap-form-group">
+                      <label>UPI ID (VPA) *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. merchant@icici"
+                        value={accountForm.upiId}
+                        onChange={(e) => setAccountForm(f => ({ ...f, upiId: e.target.value }))}
+                        required={accountForm.methodType === 'upi' || accountForm.methodType === 'both'}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>UPI Payee Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HeroPay Tech Solutions"
+                        value={accountForm.upiPayeeName}
+                        onChange={(e) => setAccountForm(f => ({ ...f, upiPayeeName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="ap-form-group">
-                  <label>UPI Payee Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. HeroPay Tech Solutions"
-                    value={accountForm.upiPayeeName}
-                    onChange={(e) => setAccountForm(f => ({ ...f, upiPayeeName: e.target.value }))}
-                  />
+              )}
+
+              {/* Bank Section (Shown for Bank Only and Both) */}
+              {(accountForm.methodType === 'bank' || accountForm.methodType === 'both') && (
+                <div className="ap-method-section">
+                  <div className="ap-form-subheading">
+                    <Building2 size={15} />
+                    <span>Bank Account Details</span>
+                  </div>
+                  <div className="ap-settings-grid">
+                    <div className="ap-form-group">
+                      <label>Bank Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. ICICI Bank Ltd"
+                        value={accountForm.bankName}
+                        onChange={(e) => setAccountForm(f => ({ ...f, bankName: e.target.value }))}
+                        required={accountForm.methodType === 'bank' || accountForm.methodType === 'both'}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>Account Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 001205018924"
+                        value={accountForm.accountNumber}
+                        onChange={(e) => setAccountForm(f => ({ ...f, accountNumber: e.target.value }))}
+                        required={accountForm.methodType === 'bank' || accountForm.methodType === 'both'}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>Account Holder Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HEROPAY TECH SOLUTIONS PVT LTD"
+                        value={accountForm.accountHolder}
+                        onChange={(e) => setAccountForm(f => ({ ...f, accountHolder: e.target.value }))}
+                        required={accountForm.methodType === 'bank' || accountForm.methodType === 'both'}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>IFSC Code *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. ICIC0000012"
+                        value={accountForm.ifscCode}
+                        onChange={(e) => setAccountForm(f => ({ ...f, ifscCode: e.target.value }))}
+                        required={accountForm.methodType === 'bank' || accountForm.methodType === 'both'}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>Account Type</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Current Account"
+                        value={accountForm.accountType}
+                        onChange={(e) => setAccountForm(f => ({ ...f, accountType: e.target.value }))}
+                      />
+                    </div>
+                    <div className="ap-form-group">
+                      <label>Bank Branch</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Connaught Place, New Delhi"
+                        value={accountForm.bankBranch}
+                        onChange={(e) => setAccountForm(f => ({ ...f, bankBranch: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="ap-form-checkbox-row">
                 <label className="ap-checkbox-label">

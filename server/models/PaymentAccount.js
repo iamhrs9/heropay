@@ -22,6 +22,13 @@ const paymentAccountSchema = new mongoose.Schema(
     upiId:        { type: String, default: '', trim: true },
     upiPayeeName: { type: String, default: '', trim: true },
 
+    // Method Type: 'bank', 'upi', or 'both'
+    methodType: {
+      type: String,
+      enum: ['bank', 'upi', 'both'],
+      default: 'both'
+    },
+
     // Toggle on/off without deleting
     isActive: { type: Boolean, default: true }
   },

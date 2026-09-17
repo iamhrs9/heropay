@@ -7,9 +7,60 @@ const router = express.Router()
 
 // All routes below are protected (require user JWT)
 
+// Helper: auto-approve any pending orders whose deadline has passed
+async function autoApproveUserExpiredOrders(userId) {
+  try {
+    const now = new Date()
+    const pendingOrders = await Order.find({
+      userId,
+      status: 'Pending',
+      autoApproveAt: { $lte: now }
+    })
+
+    if (!pendingOrders || !pendingOrders.length) {
+      return { approvedCount: 0, coinsAdded: 0, approvedOrders: [] }
+    }
+
+    let totalCoinsAdded = 0
+    let totalCommissionAdded = 0
+    let totalBuyAdded = 0
+
+    for (const order of pendingOrders) {
+      order.status = 'Success'
+      order.actionBy = 'auto'
+      await order.save()
+      totalCoinsAdded += (order.totalCoins || 0)
+      totalCommissionAdded += (order.commission || 0)
+      totalBuyAdded += (order.assignedAmount || 0)
+    }
+
+    if (totalCoinsAdded > 0) {
+      await User.findByIdAndUpdate(userId, {
+        $inc: {
+          balance: totalCoinsAdded,
+          totalBuyGoCoin: totalBuyAdded,
+          totalAward: totalCommissionAdded
+        }
+      })
+    }
+
+    return {
+      approvedCount: pendingOrders.length,
+      coinsAdded: totalCoinsAdded,
+      approvedOrders: pendingOrders
+    }
+  } catch (err) {
+    console.error('[autoApproveUserExpiredOrders]', err.message)
+    return { approvedCount: 0, coinsAdded: 0, approvedOrders: [] }
+  }
+}
+
 // GET /api/orders  — fetch this user's orders (for Record screen)
 router.get('/', protect, async (req, res) => {
   try {
+    // Automatically auto-approve any expired orders on fetch
+    await autoApproveUserExpiredOrders(req.userId)
+
     const orders = await Order.find({ userId: req.userId }).sort({ createdAt: -1 })
     res.json(orders)
   } catch (err) {
@@ -117,43 +168,18 @@ router.patch('/by-tx/:txId/cancel', protect, async (req, res) => {
 })
 
 // POST /api/orders/auto-approve  — called by client timer after 15 min
-// Only approves orders that are still Pending and past autoApproveAt
 router.post('/auto-approve', protect, async (req, res) => {
   try {
-    const now = new Date()
-    const pendingOrders = await Order.find({
-      userId: req.userId,
-      status: 'Pending',
-      autoApproveAt: { $lte: now }
-    })
-
-    let totalCoinsAdded = 0
-    let totalCommissionAdded = 0
-    let totalBuyAdded = 0
-    for (const order of pendingOrders) {
-      order.status = 'Success'
-      order.actionBy = 'auto'
-      await order.save()
-      totalCoinsAdded += (order.totalCoins || 0)
-      totalCommissionAdded += (order.commission || 0)
-      totalBuyAdded += (order.assignedAmount || 0)
-    }
-
-    if (totalCoinsAdded > 0) {
-      await User.findByIdAndUpdate(req.userId, {
-        $inc: {
-          balance: totalCoinsAdded,
-          totalBuyGoCoin: totalBuyAdded,
-          totalAward: totalCommissionAdded
-        }
-      })
-    }
-
+    const result = await autoApproveUserExpiredOrders(req.userId)
     const updatedUser = await User.findById(req.userId)
     res.json({
-      approvedCount: pendingOrders.length,
-      coinsAdded: totalCoinsAdded,
-      newBalance: updatedUser.balance
+      approvedCount: result.approvedCount,
+      coinsAdded: result.coinsAdded,
+      newBalance: updatedUser?.balance || 0,
+      approvedOrders: result.approvedOrders.map((o) => ({
+        id: o.txId,
+        coins: o.totalCoins
+      }))
     })
   } catch (err) {
     console.error('[POST /api/orders/auto-approve]', err.message)
