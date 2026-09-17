@@ -1,6 +1,7 @@
 const express = require('express')
 const Order = require('../models/Order')
 const User = require('../models/User')
+const PaymentAccount = require('../models/PaymentAccount')
 const { protect } = require('../middleware/auth')
 
 const router = express.Router()
@@ -99,6 +100,31 @@ router.post('/', protect, async (req, res) => {
       ? new Date(clientAutoApproveAt)
       : new Date(Date.now() + 15 * 60 * 1000) // 15 min from now
 
+    // Ensure order is assigned an active payment account from MongoDB
+    let assignedPaymentAccount = paymentAccount || null
+    if (!assignedPaymentAccount) {
+      let activeAccounts = await PaymentAccount.find({ isActive: true })
+      if (!activeAccounts.length) {
+        activeAccounts = await PaymentAccount.find()
+      }
+      if (activeAccounts.length > 0) {
+        const randomIndex = Math.floor(Math.random() * activeAccounts.length)
+        const chosen = activeAccounts[randomIndex]
+        assignedPaymentAccount = {
+          label: chosen.label,
+          methodType: chosen.methodType || 'both',
+          bankName: chosen.bankName || '',
+          accountNumber: chosen.accountNumber || '',
+          accountHolder: chosen.accountHolder || '',
+          ifscCode: chosen.ifscCode || '',
+          accountType: chosen.accountType || 'Current Account',
+          bankBranch: chosen.bankBranch || '',
+          upiId: chosen.upiId || '',
+          upiPayeeName: chosen.upiPayeeName || ''
+        }
+      }
+    }
+
     const order = await Order.create({
       userId: req.userId,
       txId,
@@ -109,7 +135,7 @@ router.post('/', protect, async (req, res) => {
       utr: utr || '',
       screenshotUrl: screenshotUrl || '',
       proofSubmitted: Boolean(proofSubmitted),
-      paymentAccount: paymentAccount || null,
+      paymentAccount: assignedPaymentAccount,
       status: 'Pending',
       autoApproveAt
     })

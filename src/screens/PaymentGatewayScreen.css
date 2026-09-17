@@ -398,6 +398,63 @@
   color: #0F172A;
 }
 
+/* 1-Tap Open UPI App Button */
+.payment-open-upi-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, #FF5000 0%, #FF7A00 100%);
+  color: #FFFFFF !important;
+  text-decoration: none;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(255, 80, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.payment-open-upi-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 80, 0, 0.35);
+}
+
+.payment-open-upi-btn:active {
+  transform: scale(0.98);
+}
+
+/* Payment Details Loading State */
+.payment-details-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 160px;
+  color: #64748B;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.payment-config-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 80, 0, 0.15);
+  border-top-color: #FF5000;
+  border-radius: 50%;
+  animation: paymentSpin 0.8s linear infinite;
+}
+
+@keyframes paymentSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Floating Bottom Action Bar */
 .payment-floating-footer {
   position: sticky;

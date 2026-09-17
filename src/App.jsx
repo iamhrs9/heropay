@@ -749,7 +749,25 @@ export default function App() {
         .then((r) => r.json())
         .then((saved) => {
           if (saved?._id) {
-            setPendingOrderDetails((prev) => (prev ? { ...prev, _id: saved._id } : null))
+            setPendingOrderDetails((prev) => (prev ? {
+              ...prev,
+              _id: saved._id,
+              paymentAccount: saved.paymentAccount || prev.paymentAccount
+            } : null))
+            setTransactionRecords((prev) =>
+              prev.map((item) =>
+                item.txId === txId
+                  ? { ...item, paymentAccount: saved.paymentAccount || item.paymentAccount }
+                  : item
+              )
+            )
+            setPendingOrdersList((prev) =>
+              prev.map((item) =>
+                item.txId === txId
+                  ? { ...item, paymentAccount: saved.paymentAccount || item.paymentAccount }
+                  : item
+              )
+            )
           }
         })
         .catch(() => {})

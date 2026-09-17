@@ -37,7 +37,6 @@ export default function PaymentGatewayScreen({
     return AUTO_APPROVE_MINUTES * 60
   }
 
-  const [paymentMethod, setPaymentMethod] = useState('bank') // 'bank' | 'upi'
   const [copiedField, setCopiedField] = useState(null)
   const [timeLeft, setTimeLeft] = useState(getInitialSeconds)
   const [isProofModalOpen, setIsProofModalOpen] = useState(false)
@@ -50,6 +49,28 @@ export default function PaymentGatewayScreen({
 
   // Payment config fetched live from MongoDB or from saved order
   const [payConfig, setPayConfig] = useState(order?.paymentAccount || null)
+  const [isLoadingConfig, setIsLoadingConfig] = useState(!order?.paymentAccount)
+
+  // Compute method availability cleanly
+  const methodType = payConfig?.methodType || (
+    payConfig?.upiId && !payConfig?.accountNumber ? 'upi' :
+    payConfig?.accountNumber && !payConfig?.upiId ? 'bank' :
+    payConfig?.upiId && payConfig?.accountNumber ? 'both' :
+    (order?.paymentAccount?.methodType || null)
+  )
+
+  const hasUpi = methodType !== 'bank' && Boolean(payConfig?.upiId && payConfig.upiId.trim() !== '')
+  const hasBank = methodType !== 'upi' && Boolean(payConfig?.accountNumber && payConfig.accountNumber.trim() !== '' && payConfig.accountNumber !== '—')
+
+  const isUpiOnly = methodType === 'upi' || (hasUpi && !hasBank)
+  const isBankOnly = methodType === 'bank' || (hasBank && !hasUpi)
+  const isBoth = (methodType === 'both' || (!methodType && hasBank && hasUpi)) && hasBank && hasUpi
+
+  const [paymentMethod, setPaymentMethod] = useState(() => {
+    const acc = order?.paymentAccount
+    if (acc?.methodType === 'upi' || (acc?.upiId && !acc?.accountNumber)) return 'upi'
+    return 'bank'
+  })
 
   useLockScroll(isProofModalOpen || isCancelModalOpen)
 
@@ -57,12 +78,31 @@ export default function PaymentGatewayScreen({
   useEffect(() => {
     if (order?.paymentAccount) {
       setPayConfig(order.paymentAccount)
+      setIsLoadingConfig(false)
+      if (order.paymentAccount.methodType === 'upi' || (order.paymentAccount.upiId && !order.paymentAccount.accountNumber)) {
+        setPaymentMethod('upi')
+      } else {
+        setPaymentMethod('bank')
+      }
       return
     }
+    setIsLoadingConfig(true)
     fetch('/api/admin/payment-config')
       .then((r) => r.json())
-      .then((data) => setPayConfig(data))
-      .catch(() => {}) // silent fail — falls back to env vars below
+      .then((data) => {
+        if (data) {
+          setPayConfig(data)
+          if (data.methodType === 'upi' || (data.upiId && !data.accountNumber)) {
+            setPaymentMethod('upi')
+          } else if (data.methodType === 'bank' || (data.accountNumber && !data.upiId)) {
+            setPaymentMethod('bank')
+          }
+        }
+        setIsLoadingConfig(false)
+      })
+      .catch(() => {
+        setIsLoadingConfig(false)
+      })
   }, [order?.paymentAccount])
 
   // Sync remaining time when order changes
@@ -95,45 +135,30 @@ export default function PaymentGatewayScreen({
     totalCoins: 3126.75
   }
 
-  // Check if UPI and Bank are configured for this account
-  const hasUpi = Boolean(
-    payConfig !== null
-      ? payConfig?.upiId && payConfig.upiId.trim() !== ''
-      : (import.meta.env.VITE_UPI_ID && import.meta.env.VITE_UPI_ID.trim() !== '')
-  )
-
-  const hasBank = Boolean(
-    payConfig !== null
-      ? payConfig?.accountNumber && payConfig.accountNumber.trim() !== '' && payConfig.accountNumber !== '—'
-      : (import.meta.env.VITE_ACCOUNT_NUMBER && import.meta.env.VITE_ACCOUNT_NUMBER.trim() !== '')
-  )
-
+  // Keep paymentMethod synced with mode
   useEffect(() => {
-    if (payConfig) {
-      if (!hasBank && hasUpi) {
-        setPaymentMethod('upi')
-      } else if (hasBank && !hasUpi) {
-        setPaymentMethod('bank')
-      }
+    if (isUpiOnly) {
+      setPaymentMethod('upi')
+    } else if (isBankOnly) {
+      setPaymentMethod('bank')
     }
-  }, [payConfig, hasBank, hasUpi])
+  }, [isUpiOnly, isBankOnly])
 
-  // Bank details: live from MongoDB, fallback to .env, fallback to placeholder
+  // Bank details: only shown if bank is supported
   const bankDetails = {
-    bankName:      payConfig?.bankName      || import.meta.env.VITE_BANK_NAME      || '—',
-    accountNumber: payConfig?.accountNumber || import.meta.env.VITE_ACCOUNT_NUMBER || '—',
-    accountHolder: payConfig?.accountHolder || import.meta.env.VITE_ACCOUNT_HOLDER || '—',
-    ifscCode:      payConfig?.ifscCode      || import.meta.env.VITE_IFSC_CODE      || '—',
-    accountType:   payConfig?.accountType   || import.meta.env.VITE_ACCOUNT_TYPE   || 'Current Account',
-    branch:        payConfig?.bankBranch    || import.meta.env.VITE_BANK_BRANCH    || '—'
+    bankName:      payConfig?.bankName      || '—',
+    accountNumber: payConfig?.accountNumber || '—',
+    accountHolder: payConfig?.accountHolder || '—',
+    ifscCode:      payConfig?.ifscCode      || '—',
+    accountType:   payConfig?.accountType   || 'Current Account',
+    branch:        payConfig?.bankBranch    || '—'
   }
 
   const upiDetails = {
-    upiId:        payConfig?.upiId        || import.meta.env.VITE_UPI_ID          || '',
-    payeeName:    payConfig?.upiPayeeName || import.meta.env.VITE_UPI_PAYEE_NAME  || 'HeroPay',
+    upiId:        payConfig?.upiId        || '',
+    payeeName:    payConfig?.upiPayeeName || 'HeroPay',
     merchantCode: 'HEROPAY-PAY'
   }
-
 
   const handleCopy = (text, fieldKey, label) => {
     navigator.clipboard?.writeText?.(text)
@@ -252,7 +277,7 @@ export default function PaymentGatewayScreen({
         </div>
 
         {/* Method Switcher Tabs (Only shown if BOTH Bank and UPI are configured) */}
-        {hasBank && hasUpi && (
+        {isBoth && (
           <div className="payment-methods-tabs">
             <button
               type="button"
@@ -275,8 +300,79 @@ export default function PaymentGatewayScreen({
         )}
 
         {/* Method Content Card */}
-        {(!hasUpi || (paymentMethod === 'bank' && hasBank)) ? (
-          <div className="payment-details-card">
+        {isLoadingConfig && !payConfig ? (
+          <div className="payment-details-card payment-details-loading">
+            <div className="payment-config-spinner" />
+            <span>Fetching payment account details...</span>
+          </div>
+        ) : (isUpiOnly || (isBoth && paymentMethod === 'upi')) ? (
+          <div className="payment-details-card upi-card-active">
+            <div className="payment-card-banner upi-banner">
+              <Smartphone size={18} color="#FF5000" />
+              <span>Direct Instant UPI Payment</span>
+            </div>
+
+            {/* UPI ID Row with Copy */}
+            <div className="payment-fields-list">
+              <div className="payment-field-row">
+                <div className="field-info">
+                  <span className="field-label">Official UPI VPA ID</span>
+                  <span className="field-value highlight">{upiDetails.upiId}</span>
+                </div>
+                <button
+                  type="button"
+                  className={`copy-action-btn ${copiedField === 'upi' ? 'copied' : ''}`}
+                  onClick={() => handleCopy(upiDetails.upiId, 'upi', 'UPI ID')}
+                >
+                  {copiedField === 'upi' ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copiedField === 'upi' ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              {/* Payee Name (if available) */}
+              {upiDetails.payeeName && (
+                <div className="payment-field-row">
+                  <div className="field-info">
+                    <span className="field-label">Payee / Merchant Name</span>
+                    <span className="field-value">{upiDetails.payeeName}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`copy-action-btn ${copiedField === 'payee' ? 'copied' : ''}`}
+                    onClick={() => handleCopy(upiDetails.payeeName, 'payee', 'Payee Name')}
+                  >
+                    {copiedField === 'payee' ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copiedField === 'payee' ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 1-Tap Pay via UPI App Button (Mobile Intent) */}
+            {upiDetails.upiId && (
+              <a
+                href={`upi://pay?pa=${encodeURIComponent(upiDetails.upiId)}&pn=${encodeURIComponent(upiDetails.payeeName || 'HeroPay')}&am=${safeOrder.assignedAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('HeroPay Order ' + (safeOrder.txId || safeOrder.id || ''))}`}
+                className="payment-open-upi-btn"
+              >
+                <Smartphone size={16} />
+                <span>Open in UPI App (GPay / PhonePe / Paytm)</span>
+              </a>
+            )}
+
+            {/* Supported UPI Apps Row */}
+            <div className="payment-upi-apps-row">
+              <span className="upi-apps-label">Pay using any UPI App:</span>
+              <div className="upi-apps-badges">
+                <span className="upi-badge-chip">Google Pay</span>
+                <span className="upi-badge-chip">PhonePe</span>
+                <span className="upi-badge-chip">Paytm</span>
+                <span className="upi-badge-chip">BHIM UPI</span>
+                <span className="upi-badge-chip">Cred</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="payment-details-card bank-card-active">
             <div className="payment-card-banner">
               <Building2 size={18} color="#FF5000" />
               <span>Official HeroPay Beneficiary Account</span>
@@ -340,50 +436,6 @@ export default function PaymentGatewayScreen({
               </div>
             </div>
           </div>
-        ) : (
-          <div className="payment-details-card">
-            <div className="payment-card-banner">
-              <Smartphone size={18} color="#FF5000" />
-              <span>Direct Instant UPI Payment</span>
-            </div>
-
-            {/* UPI ID Row with Copy */}
-            <div className="payment-fields-list">
-              <div className="payment-field-row">
-                <div className="field-info">
-                  <span className="field-label">Official UPI VPA ID</span>
-                  <span className="field-value highlight">{upiDetails.upiId}</span>
-                </div>
-                <button
-                  type="button"
-                  className={`copy-action-btn ${copiedField === 'upi' ? 'copied' : ''}`}
-                  onClick={() => handleCopy(upiDetails.upiId, 'upi', 'UPI ID')}
-                >
-                  {copiedField === 'upi' ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{copiedField === 'upi' ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
-
-              {/* Payee Name */}
-              <div className="payment-field-row">
-                <div className="field-info">
-                  <span className="field-label">Payee / Merchant Name</span>
-                  <span className="field-value">{upiDetails.payeeName}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Supported UPI Apps Row */}
-            <div className="payment-upi-apps-row">
-              <span className="upi-apps-label">Pay using any UPI App:</span>
-              <div className="upi-apps-badges">
-                <span className="upi-badge-chip">Google Pay</span>
-                <span className="upi-badge-chip">PhonePe</span>
-                <span className="upi-badge-chip">Paytm</span>
-                <span className="upi-badge-chip">BHIM UPI</span>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* 3 Step Instruction Guide */}
@@ -391,10 +443,10 @@ export default function PaymentGatewayScreen({
           <h4 className="instructions-title">Steps to Complete Your Order:</h4>
           <ol className="instructions-list">
             <li>
-              <strong>Transfer Exact Amount:</strong> Pay <strong>₹{safeOrder.assignedAmount.toLocaleString('en-IN')}</strong> using the details above.
+              <strong>Transfer Exact Amount:</strong> Pay <strong>₹{safeOrder.assignedAmount.toLocaleString('en-IN')}</strong> using the {isUpiOnly ? 'UPI ID' : (isBankOnly ? 'Bank Account' : 'details')} above.
             </li>
             <li>
-              <strong>Note the UTR / Ref Number:</strong> Copy the 12-digit transaction ID from your banking or UPI receipt.
+              <strong>Note the UTR / Ref Number:</strong> Copy the 12-digit transaction ID from your {isUpiOnly ? 'UPI app' : 'banking or UPI'} receipt.
             </li>
             <li>
               <strong>Submit Proof Below:</strong> Enter your UTR and upload the payment screenshot to place your order in <strong>Pending Verification</strong>.
