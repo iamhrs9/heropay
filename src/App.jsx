@@ -132,43 +132,77 @@ export default function App() {
   }, [sellSimCycle])
 
   // Helper to generate realistic withdrawal orders for any cycle window
-  const generateSimulatedOrders = useCallback((startTime, endTime, activeUpis, currentBal, isFailed) => {
-    // If balance is 0 or less than 100, NO withdrawal can be initiated
-    if (!currentBal || currentBal < 100 || !activeUpis || activeUpis.length === 0) {
-      return []
-    }
+  const generateSimulatedOrders = useCallback((startTime, endTime, activeUpis, currentBal, isFailed, userPhone) => {
+    const bal = Number(currentBal) || 0
+    if (bal <= 0) return []
 
-    const maxPossible = Math.floor(currentBal)
-    const validAmounts = [100, 200, 300, 400, 500, 600, 700, 800, 1000, 1200, 1500, 2000, 2500, 3000, 5000].filter(
-      (v) => v <= maxPossible
-    )
-
+    // Target withdrawal amount: strictly <= bal (never exceeds user wallet balance)
     let targetTotal = 0
-    if (validAmounts.length === 0) {
-      targetTotal = maxPossible
+    if (bal < 100) {
+      targetTotal = Math.floor(bal)
     } else {
-      // Pick an amount close to or slightly less than user's balance
-      const candidatePool = validAmounts.slice(Math.max(0, validAmounts.length - 4))
-      targetTotal = candidatePool[Math.floor(Math.random() * candidatePool.length)]
+      // Pick an amount between 60% and 100% of user balance (rounded to nearest 50 or 100)
+      const ratios = [0.65, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
+      const chosenRatio = ratios[Math.floor(Math.random() * ratios.length)]
+      let rawAmt = bal * chosenRatio
+      if (bal >= 500) {
+        targetTotal = Math.floor(rawAmt / 100) * 100
+      } else {
+        targetTotal = Math.floor(rawAmt / 50) * 50
+      }
+      if (targetTotal <= 0) targetTotal = Math.floor(bal)
+      if (targetTotal > bal) targetTotal = Math.floor(bal)
     }
 
-    if (!targetTotal || targetTotal <= 0 || targetTotal > maxPossible) {
-      return []
-    }
+    if (targetTotal <= 0) return []
 
+    // Divide into 1, 2, or max 3 orders randomly as requested
     let chunks = [targetTotal]
-    if (targetTotal >= 400 && Math.random() > 0.3) {
-      let chunk1
-      if (targetTotal === 700) chunk1 = 500
-      else if (targetTotal === 600) chunk1 = 400
-      else if (targetTotal === 500) chunk1 = 300
-      else chunk1 = Math.round((targetTotal * 0.6) / 100) * 100
-      if (chunk1 >= targetTotal) chunk1 = targetTotal - 100
-      const chunk2 = targetTotal - chunk1
-      if (chunk1 > 0 && chunk2 > 0) {
-        chunks = [chunk1, chunk2]
+    let orderCount = 1
+
+    if (targetTotal >= 600) {
+      const rand = Math.random()
+      if (rand < 0.40) orderCount = 1      // 40% chance 1 order
+      else if (rand < 0.75) orderCount = 2 // 35% chance 2 orders
+      else orderCount = 3                  // 25% chance 3 orders
+    } else if (targetTotal >= 300) {
+      orderCount = Math.random() < 0.5 ? 1 : 2
+    } else {
+      orderCount = 1
+    }
+
+    if (orderCount === 1) {
+      chunks = [targetTotal]
+    } else if (orderCount === 2) {
+      let c1 = Math.round((targetTotal * 0.6) / 50) * 50
+      if (c1 >= targetTotal || c1 <= 0) c1 = Math.floor(targetTotal / 2)
+      let c2 = targetTotal - c1
+      if (c1 > 0 && c2 > 0) {
+        chunks = [c1, c2]
+      } else {
+        chunks = [targetTotal]
+      }
+    } else if (orderCount === 3) {
+      let c1 = Math.round((targetTotal * 0.4) / 50) * 50
+      let c2 = Math.round((targetTotal * 0.35) / 50) * 50
+      if (c1 <= 0) c1 = 100
+      if (c2 <= 0) c2 = 100
+      let c3 = targetTotal - c1 - c2
+      if (c1 > 0 && c2 > 0 && c3 > 0) {
+        chunks = [c1, c2, c3]
+      } else {
+        let half = Math.floor(targetTotal / 2)
+        chunks = [half, targetTotal - half]
       }
     }
+
+    // Determine UPI list to assign orders to
+    const fallbackUpi = {
+      providerName: 'UPI',
+      vpa: userPhone ? `${userPhone}@paytm` : 'user@okaxis',
+      phone: userPhone || ''
+    }
+    const upiList = activeUpis && activeUpis.length > 0 ? activeUpis : [fallbackUpi]
 
     const d = new Date(startTime)
     const nowD = new Date()
@@ -179,8 +213,8 @@ export default function App() {
       : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${timeStr}`
 
     return chunks.map((chunkAmt, idx) => {
-      const chosenUpi = activeUpis[Math.floor(Math.random() * activeUpis.length)]
-      const methodStr = `${chosenUpi.providerName || 'UPI'} (${chosenUpi.vpa || chosenUpi.upiAddress || chosenUpi.phone})`
+      const chosenUpi = upiList[idx % upiList.length]
+      const methodStr = `${chosenUpi.providerName || 'UPI'} (${chosenUpi.vpa || chosenUpi.upiAddress || chosenUpi.phone || 'Linked UPI'})`
       const orderId = `SELL_${startTime}_${idx + 1}`
 
       return {
@@ -207,8 +241,8 @@ export default function App() {
     const activeUpis = withdrawalUpis.filter(isUpiActive)
     const currentBal = Number(userBalance) || 0
 
-    // If no active UPIs or user has 0/insufficient balance, clear any pending withdrawals!
-    if (activeUpis.length === 0 || currentBal < 100) {
+    // RULE 1: If user has 0 balance (or <= 0), NO withdrawal should run!
+    if (currentBal <= 0) {
       try {
         localStorage.removeItem('hp_sim_cycle_anchor')
         localStorage.removeItem('hp_sim_sell_cycle')
@@ -221,6 +255,7 @@ export default function App() {
       return
     }
 
+    // RULE 2: If user has XYZ balance (> 0), start withdrawal cycle!
     const now = Date.now()
     const ACTIVE_DURATION_MS = 15 * 60 * 1000 // 15 mins active
     const COOLDOWN_DURATION_MS = 90 * 1000 // 1.5 mins cooldown
@@ -249,8 +284,8 @@ export default function App() {
         localStorage.setItem('hp_sim_cycle_anchor', String(newAnchor))
       } catch {}
 
-      // Generate historical failed records for elapsed cycles (up to last 8)
-      const startIdx = Math.max(0, completedCycles - 8)
+      // Generate historical failed records for elapsed cycles (up to last 6)
+      const startIdx = Math.max(0, completedCycles - 6)
       const historicalFailedOrders = []
 
       for (let i = startIdx; i < completedCycles; i++) {
@@ -260,8 +295,9 @@ export default function App() {
           cycleStart,
           cycleEnd,
           activeUpis,
-          Number(userBalance) || 0,
-          true
+          currentBal,
+          true,
+          loggedInUser?.phone
         )
         historicalFailedOrders.push(...orders)
       }
@@ -280,7 +316,7 @@ export default function App() {
       anchor = newAnchor
     }
 
-    // Evaluate the ongoing cycle starting at current anchor
+    // Evaluate current cycle
     const currentOffset = now - anchor
 
     if (currentOffset < ACTIVE_DURATION_MS) {
@@ -296,9 +332,18 @@ export default function App() {
         const pendingOrders = prev.filter((o) => o.status === 'Pending')
         const pendingTotal = pendingOrders.reduce((sum, o) => sum + (Number(o.coins) || 0), 0)
 
-        // If pending total exceeds user's wallet balance or user has 0 balance, immediately wipe pending orders
-        if (pendingTotal > currentBal || currentBal < 100) {
-          return prev.filter((o) => o.status !== 'Pending')
+        // If existing pending total exceeds current balance, wipe and generate strictly <= currentBal
+        if (pendingTotal > currentBal || pendingTotal <= 0) {
+          const nonPending = prev.filter((o) => o.status !== 'Pending')
+          const freshBatch = generateSimulatedOrders(
+            anchor,
+            activeEndsAt,
+            activeUpis,
+            currentBal,
+            false,
+            loggedInUser?.phone
+          )
+          return [...freshBatch, ...nonPending].slice(0, 35)
         }
 
         const hasActivePending = pendingOrders.length > 0 && pendingOrders.some(
@@ -318,13 +363,14 @@ export default function App() {
           activeEndsAt,
           activeUpis,
           currentBal,
-          false
+          false,
+          loggedInUser?.phone
         )
         const nonPending = prev.filter((o) => o.status !== 'Pending')
         return [...newBatch, ...nonPending].slice(0, 35)
       })
     } else {
-      // Phase: COOLDOWN (1.5 mins)
+      // Phase: COOLDOWN (1.5 mins) — during this phase inTransaction is 0.00
       const cooldownEndsAt = anchor + TOTAL_CYCLE_MS
       const cooldownCycle = { phase: 'cooldown', phaseEndsAt: cooldownEndsAt }
       setSellSimCycle(cooldownCycle)
@@ -341,7 +387,7 @@ export default function App() {
         )
       })
     }
-  }, [withdrawalUpis, userBalance, generateSimulatedOrders])
+  }, [withdrawalUpis, userBalance, loggedInUser, generateSimulatedOrders])
 
   useEffect(() => {
     reconcileCycles()
