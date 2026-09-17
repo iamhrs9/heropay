@@ -190,12 +190,12 @@ export default function BuyScreen({
 
   const faqs = [
     {
-      q: 'How quickly are Go-Coins credited?',
+      q: 'How quickly are Hero-Coins credited?',
       a: 'Coins are credited instantly within 60 seconds after your UPI or USDT transaction is verified by our automated system.'
     },
     {
       q: 'How does daily income (9.5% + 6) work?',
-      a: 'Your active Go-Coins generate 9.5% base return plus an additional 6 Go-Coins reward credited directly to your balance daily.'
+      a: 'Your active Hero-Coins generate 9.5% base return plus an additional 6 Hero-Coins reward credited directly to your balance daily.'
     },
     {
       q: 'Is my payment protected?',
@@ -333,7 +333,7 @@ export default function BuyScreen({
             <div className="buy-calc-stat">
               <span className="buy-calc-stat-label">Estimated Daily Return (9.5% + 6)</span>
               <span className="buy-calc-stat-val">
-                +{(parseFloat(customAmount || 0) * 0.095 + 6).toFixed(2)} Go-Coins
+                +{(parseFloat(customAmount || 0) * 0.095 + 6).toFixed(2)} Hero-Coins
               </span>
             </div>
             <button
@@ -464,7 +464,7 @@ export default function BuyScreen({
           <div className="buy-step-card">
             <div className="buy-step-num">1</div>
             <span className="buy-step-title">Select Package</span>
-            <span className="buy-step-desc">Choose from 500 to 75,000 Go-Coins</span>
+            <span className="buy-step-desc">Choose from 500 to 75,000 Hero-Coins</span>
           </div>
           <div className="buy-step-card">
             <div className="buy-step-num">2</div>
@@ -523,7 +523,7 @@ export default function BuyScreen({
                 </p>
                 <div style={{ marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#059669', padding: '6px 14px', borderRadius: '20px', fontWeight: '700', fontSize: '13px' }}>
                   <RewardCoin size={15} />
-                  <span>+{activeOrder.totalCoins.toFixed(2)} Go-Coins Credited!</span>
+                  <span>+{activeOrder.totalCoins.toFixed(2)} Hero-Coins Credited!</span>
                 </div>
               </div>
             ) : (
@@ -558,7 +558,7 @@ export default function BuyScreen({
                   <div className="buy-summary-row">
                     <span>Commission (9.5% + ₹6)</span>
                     <strong style={{ color: 'var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '8px' }}>
-                      +{activeOrder.commission.toFixed(2)} Go-Coins
+                      +{activeOrder.commission.toFixed(2)} Hero-Coins
                     </strong>
                   </div>
 

@@ -114,7 +114,7 @@ export default function RecordScreen({
           {/* Metric Breakdown Rows */}
           <div className="record-breakdown-list">
             <div className="record-metric-row">
-              <span className="record-metric-name">Total Sell Go-Coin:</span>
+              <span className="record-metric-name">Total Sell Hero-Coin:</span>
               <div className="record-metric-val">
                 <RewardCoin size={15} />
                 <span>0.00</span>
@@ -122,7 +122,7 @@ export default function RecordScreen({
             </div>
 
             <div className="record-metric-row">
-              <span className="record-metric-name">Total Buy Go-Coin:</span>
+              <span className="record-metric-name">Total Buy Hero-Coin:</span>
               <div className="record-metric-val">
                 <RewardCoin size={15} />
                 <span>{Number(totalBuyGoCoin).toFixed(2)}</span>
@@ -462,7 +462,7 @@ export default function RecordScreen({
                     <Clock size={16} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <div>
                       <strong style={{ display: 'block', color: '#78350F', marginBottom: '2px' }}>Payment Verification In Progress</strong>
-                      System payment details check kar raha hai, please wait... Verification complete hote hi Go-Coins aapke wallet mein add ho jayenge.
+                      System payment details check kar raha hai, please wait... Verification complete hote hi Hero-Coins aapke wallet mein add ho jayenge.
                     </div>
                   </div>
                   <button
@@ -487,7 +487,7 @@ export default function RecordScreen({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <RewardCoin size={18} />
                   <strong style={{ fontSize: '20px', color: selectedTxDetail.amount.startsWith('+') ? '#10B981' : '#EF4444' }}>
-                    {selectedTxDetail.amount} Go-Coins
+                    {selectedTxDetail.amount} Hero-Coins
                   </strong>
                 </div>
               </div>

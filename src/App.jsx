@@ -180,7 +180,7 @@ export default function App() {
         id: orderId,
         txId: orderId,
         type: 'sell',
-        title: 'Sell Go-Coin to HeroPay',
+        title: 'Sell Hero-Coin to HeroPay',
         amount: `-${Number(chunkAmt).toFixed(2)}`,
         coins: Number(chunkAmt).toFixed(2),
         status: isFailed ? 'Failed' : 'Pending',
@@ -961,7 +961,7 @@ export default function App() {
     }
 
     setTransactionRecords((prev) => [entryPackage, entryCommission, ...prev])
-    showToast(`Order Placed! +${totalCoins.toFixed(2)} Go-Coins Credited`)
+    showToast(`Order Placed! +${totalCoins.toFixed(2)} Hero-Coins Credited`)
   }
 
   const handleLoginSuccess = (data) => {

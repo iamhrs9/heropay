@@ -228,7 +228,7 @@ export default function PaymentGatewayScreen({
           <div className="payment-hero-yield-banner">
             <div className="payment-yield-left">
               <span className="yield-label">Income Yield (9.5% + ₹6)</span>
-              <strong className="yield-value">+{safeOrder.commission.toFixed(2)} Go-Coins</strong>
+              <strong className="yield-value">+{safeOrder.commission.toFixed(2)} Hero-Coins</strong>
             </div>
             <div className="payment-yield-divider" />
             <div className="payment-yield-right">
@@ -532,7 +532,7 @@ export default function PaymentGatewayScreen({
               <div className="payment-pending-notice">
                 <Clock size={16} color="#F59E0B" className="notice-icon" />
                 <p>
-                  Your order will be placed in <strong>Pending State</strong>. Go-Coins will be credited automatically once payment verification is completed.
+                  Your order will be placed in <strong>Pending State</strong>. Hero-Coins will be credited automatically once payment verification is completed.
                 </p>
               </div>
 

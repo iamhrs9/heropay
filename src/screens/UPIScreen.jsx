@@ -393,7 +393,7 @@ export default function UPIScreen({ onManageUPI, upis = [], onUpdateUpis }) {
                 <input
                   type="tel"
                   required
-                  placeholder="e.g. 8302485826"
+                  placeholder="e.g. 9876543210"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   className="upi-modal-input"
@@ -405,7 +405,7 @@ export default function UPIScreen({ onManageUPI, upis = [], onUpdateUpis }) {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 8302485826@okaxis"
+                  placeholder="e.g. username@okaxis"
                   value={newUpiId}
                   onChange={(e) => setNewUpiId(e.target.value)}
                   className="upi-modal-input"

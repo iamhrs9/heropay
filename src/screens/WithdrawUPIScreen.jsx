@@ -309,7 +309,7 @@ export default function WithdrawUPIScreen({ onBack, onAddUpi, upis = [], onUpdat
         <div className="withdraw-warning-banner">
           <AlertCircle size={15} className="warning-icon" />
           <p className="warning-text">
-            Please use a UPI that you are certain can receive payment; otherwise, your GO-COIN will not be able to be sold.
+            Please use a UPI that you are certain can receive payment; otherwise, your Hero-Coins will not be able to be sold.
           </p>
         </div>
       </footer>
@@ -319,21 +319,6 @@ export default function WithdrawUPIScreen({ onBack, onAddUpi, upis = [], onUpdat
         <div className="withdraw-modal-backdrop" onClick={() => setAmountPickerItem(null)}>
           <div className="withdraw-modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="withdraw-sheet-handle" />
-            <div className="withdraw-sheet-header">
-              <h3>Select Minimum Withdrawal Amount</h3>
-              <button
-                type="button"
-                className="withdraw-sheet-close"
-                onClick={() => setAmountPickerItem(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className="withdraw-sheet-sub">
-              Withdrawal requests below this amount will automatically route to other enabled accounts.
-            </p>
-
             <div className="withdraw-amount-options-list">
               {amountOptions.map((amt) => {
                 const isSelected = amountPickerItem.minAmount === amt
@@ -401,7 +386,7 @@ export default function WithdrawUPIScreen({ onBack, onAddUpi, upis = [], onUpdat
                 <input
                   type="tel"
                   required
-                  placeholder="e.g. 8302485826"
+                  placeholder="e.g. 9876543210"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   className="withdraw-modal-input"
