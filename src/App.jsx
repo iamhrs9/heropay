@@ -9,6 +9,7 @@ import UPIScreen from './screens/UPIScreen'
 import TeamScreen from './screens/TeamScreen'
 import MeScreen from './screens/MeScreen'
 import RecordScreen from './screens/RecordScreen'
+import SupportScreen from './screens/SupportScreen'
 import BottomNavigation from './components/BottomNavigation'
 import backgroundSrc from './assets/background.png'
 import { Coins, Clock, X, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react'
@@ -1127,6 +1128,11 @@ export default function App() {
     setCurrentScreen('withdraw-upi')
   }
 
+  const handleOpenSupport = (fromScreen = 'me') => {
+    setReturnScreen(fromScreen || activeTab)
+    setCurrentScreen('support')
+  }
+
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
     setCurrentScreen(tabId)
@@ -1221,6 +1227,18 @@ export default function App() {
               }}
             />
           </div>
+        ) : currentScreen === 'support' ? (
+          <div className="mobile-content-viewport" style={{ paddingBottom: 0 }}>
+            <SupportScreen
+              user={loggedInUser}
+              onBack={() => {
+                const backTo = returnScreen || 'me'
+                setCurrentScreen(backTo === 'support' ? 'sell' : backTo)
+                setActiveTab(backTo === 'support' ? 'sell' : backTo)
+              }}
+              onShowToast={showToast}
+            />
+          </div>
         ) : activeTab === 'sell' ? (
           <>
             <main className="mobile-content-viewport">
@@ -1243,6 +1261,7 @@ export default function App() {
                 onRequestWithdrawal={handleRequestWithdrawal}
                 onNavigateTab={(tab) => handleTabChange(tab)}
                 onShowToast={showToast}
+                onOpenSupport={() => handleOpenSupport('sell')}
                 user={loggedInUser}
               />
             </main>
@@ -1299,6 +1318,7 @@ export default function App() {
                 onLogout={handleLogout}
                 onNavigateTab={(tab) => handleTabChange(tab)}
                 onShowToast={showToast}
+                onOpenSupport={() => handleOpenSupport('me')}
                 user={loggedInUser}
               />
             </main>

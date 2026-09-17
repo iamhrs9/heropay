@@ -9,6 +9,7 @@ const path = require('path')
 const authRoutes = require('./routes/auth')
 const orderRoutes = require('./routes/orders')
 const adminRoutes = require('./routes/admin')
+const supportRoutes = require('./routes/support')
 
 const app = express()
 
@@ -23,6 +24,7 @@ app.use(cors({ origin: true, credentials: true }))
 app.use('/api/auth', authRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/support', supportRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'HeroPay API' }))

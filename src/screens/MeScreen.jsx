@@ -21,7 +21,7 @@ import HeroPayLogo from '../components/HeroPayLogo'
 import { useLockScroll } from '../hooks/useLockScroll'
 import './MeScreen.css'
 
-export default function MeScreen({ onLogout, onNavigateTab, onShowToast, user }) {
+export default function MeScreen({ onLogout, onNavigateTab, onShowToast, onOpenSupport, user }) {
   const [isGiftCodeModal, setIsGiftCodeModal] = useState(false)
   const [giftCode, setGiftCode] = useState('')
   const [giftRedeemed, setGiftRedeemed] = useState(false)
@@ -49,23 +49,27 @@ export default function MeScreen({ onLogout, onNavigateTab, onShowToast, user })
       title: 'Linked Accounts',
       subtitle: 'Manage your login methods',
       action: () => {
-        if (onShowToast) onShowToast(`Linked Mobile: ${user?.phone || 'Active'}`)
+        if (onShowToast) onShowToast('Account linked with verified mobile number.')
       }
     },
     {
-      id: 'gift-code',
+      id: 'gift',
       icon: Gift,
-      iconColor: '#9333EA',
-      iconBg: '#F3E8FF',
-      title: 'Gift Code',
-      subtitle: 'Redeem codes and earn rewards',
-      action: () => setIsGiftCodeModal(true)
+      iconColor: '#16A34A',
+      iconBg: '#DCFCE7',
+      title: 'Redeem Gift Code',
+      subtitle: 'Claim promotional rewards',
+      action: () => {
+        setGiftCode('')
+        setGiftRedeemed(false)
+        setIsGiftCodeModal(true)
+      }
     },
     {
-      id: 'deposit',
+      id: 'usdt',
       icon: Coins,
-      iconColor: '#059669',
-      iconBg: '#D1FAE5',
+      iconColor: '#D97706',
+      iconBg: '#FEF3C7',
       title: 'USDT Deposit',
       subtitle: 'Deposit USDT to your account',
       action: () => {
@@ -78,10 +82,11 @@ export default function MeScreen({ onLogout, onNavigateTab, onShowToast, user })
       iconColor: '#E11D48',
       iconBg: '#FFE4E6',
       title: 'Customer Service',
-      subtitle: 'Get help anytime',
+      subtitle: 'Get help anytime (24/7)',
       badge: 1,
       action: () => {
-        if (onShowToast) onShowToast('Connecting to 24/7 VIP Customer Support...')
+        if (onOpenSupport) onOpenSupport()
+        else if (onShowToast) onShowToast('Connecting to 24/7 VIP Customer Support...')
       }
     },
     {

@@ -41,6 +41,7 @@ export default function SellScreen({
   onRequestWithdrawal,
   onNavigateTab,
   onShowToast,
+  onOpenSupport,
   user
 }) {
   const [activeBannerIndex, setActiveBannerIndex] = useState(0)
@@ -360,7 +361,11 @@ export default function SellScreen({
           type="button"
           className="sell-channel-item"
           onClick={() => {
-            if (onShowToast) onShowToast('Connecting to 24/7 VIP Customer Support...')
+            if (onOpenSupport) {
+              onOpenSupport()
+            } else if (onShowToast) {
+              onShowToast('Connecting to 24/7 VIP Customer Support...')
+            }
           }}
         >
           <div className="sell-channel-icon-wrap channel-green">

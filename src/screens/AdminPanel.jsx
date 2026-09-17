@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   ShieldCheck, LogIn, LogOut, Users, ShoppingBag, Clock, CheckCircle2,
   XCircle, PauseCircle, RefreshCw, Coins, Eye, X, Settings, Save, Building2, Smartphone,
-  Plus, Edit2, Trash2, Power, AlertTriangle, Check, Shuffle
+  Plus, Edit2, Trash2, Power, AlertTriangle, Check, Shuffle, Headphones, MessageSquare, Send
 } from 'lucide-react'
 import './AdminPanel.css'
 
@@ -13,7 +13,7 @@ export default function AdminPanel() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
-  const [activeTab, setActiveTab] = useState('orders') // 'orders' | 'users' | 'stats' | 'settings'
+  const [activeTab, setActiveTab] = useState('orders') // 'orders' | 'users' | 'stats' | 'settings' | 'support'
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
   const [orders, setOrders] = useState([])
@@ -28,6 +28,20 @@ export default function AdminPanel() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [editingAccountId, setEditingAccountId] = useState(null)
   const [isSavingAccount, setIsSavingAccount] = useState(false)
+
+  // Support Tickets state
+  const [supportTickets, setSupportTickets] = useState([])
+  const [supportFilter, setSupportFilter] = useState('all') // 'all' | 'Open' | 'In Progress' | 'Resolved'
+  const [replyModalTicket, setReplyModalTicket] = useState(null)
+  const [replyInput, setReplyInput] = useState('')
+  const [replyStatusInput, setReplyStatusInput] = useState('Resolved')
+  const [isUpdatingTicket, setIsUpdatingTicket] = useState(false)
+  const [previewScreenshot, setPreviewScreenshot] = useState(null)
+
+  const filteredSupportTickets = supportTickets.filter((t) => {
+    if (supportFilter === 'all') return true
+    return t.status === supportFilter
+  })
   const [accountForm, setAccountForm] = useState({
     label: '',
     methodType: 'upi',
@@ -107,6 +121,50 @@ export default function AdminPanel() {
       }
     } catch {}
   }, [authHeaders, handleLogout])
+
+  // ── Support Tickets Management ─────────────────────────────────────
+  const fetchSupportTickets = useCallback(async () => {
+    try {
+      const res = await fetch('/api/support/admin/all', { headers: authHeaders() })
+      if (res.status === 401 || res.status === 403) {
+        handleLogout()
+        setLoginError('Admin session expired. Please enter password.')
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSupportTickets(Array.isArray(data) ? data : [])
+      }
+    } catch {}
+  }, [authHeaders, handleLogout])
+
+  const handleUpdateTicket = async (ticketId, status, adminReply) => {
+    setIsUpdatingTicket(true)
+    try {
+      const res = await fetch(`/api/support/admin/${ticketId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders()
+        },
+        body: JSON.stringify({
+          status,
+          adminReply
+        })
+      })
+      if (res.ok) {
+        setToast({ type: 'success', msg: 'Support ticket updated successfully!' })
+        fetchSupportTickets()
+        setReplyModalTicket(null)
+      } else {
+        setToast({ type: 'error', msg: 'Failed to update ticket.' })
+      }
+    } catch {
+      setToast({ type: 'error', msg: 'Server error updating ticket.' })
+    } finally {
+      setIsUpdatingTicket(false)
+    }
+  }
 
   const handleOpenAddAccount = () => {
     setEditingAccountId(null)
@@ -303,19 +361,23 @@ export default function AdminPanel() {
     if (!adminToken) return
     fetchStats()
     fetchPaymentAccounts()
+    fetchSupportTickets()
     if (activeTab === 'users') fetchUsers()
     if (activeTab === 'orders') fetchOrders()
     if (activeTab === 'settings') fetchPaymentAccounts()
+    if (activeTab === 'support') fetchSupportTickets()
 
     // Live auto-refresh every 8 seconds
     const interval = setInterval(() => {
       fetchStats()
+      fetchSupportTickets()
       if (activeTab === 'orders') fetchOrders()
       if (activeTab === 'users') fetchUsers()
+      if (activeTab === 'support') fetchSupportTickets()
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [adminToken, activeTab, fetchOrders, fetchUsers, fetchStats, fetchPaymentAccounts])
+  }, [adminToken, activeTab, fetchOrders, fetchUsers, fetchStats, fetchPaymentAccounts, fetchSupportTickets])
 
   useEffect(() => {
     if (adminToken && activeTab === 'orders') fetchOrders()
@@ -455,6 +517,12 @@ export default function AdminPanel() {
           onClick={() => setActiveTab('settings')}
         >
           <Building2 size={16} /> Bank Accounts ({paymentAccounts.length})
+        </button>
+        <button
+          className={`ap-tab ${activeTab === 'support' ? 'active' : ''}`}
+          onClick={() => setActiveTab('support')}
+        >
+          <Headphones size={16} /> Support Queries ({supportTickets.filter((t) => t.status === 'Open').length > 0 ? `${supportTickets.filter((t) => t.status === 'Open').length} New` : supportTickets.length})
         </button>
       </div>
 
@@ -755,6 +823,146 @@ export default function AdminPanel() {
                 </div>
               )
             })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SUPPORT QUERIES TAB ── */}
+      {activeTab === 'support' && (
+        <div className="ap-content">
+          <div className="ap-accounts-header">
+            <div>
+              <div className="ap-accounts-title-row">
+                <Headphones size={22} className="ap-accounts-main-icon" style={{ color: '#FF5000' }} />
+                <h2>Customer Support Queries ({supportTickets.length})</h2>
+              </div>
+              <p className="ap-accounts-subtitle">
+                User problems & queries regarding Withdrawals, Buy/Deposits, UPI, and general help.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="ap-btn-add-account"
+              style={{ background: '#1E293B' }}
+              onClick={fetchSupportTickets}
+            >
+              <RefreshCw size={14} /> Refresh Queries
+            </button>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="ap-filter-bar">
+            <span className="ap-filter-label">Filter Status:</span>
+            {['all', 'Open', 'In Progress', 'Resolved', 'Closed'].map((st) => (
+              <button
+                key={st}
+                type="button"
+                className={`ap-filter-btn ${supportFilter === st ? 'active' : ''}`}
+                onClick={() => setSupportFilter(st)}
+              >
+                {st === 'all' ? `All (${supportTickets.length})` : `${st} (${supportTickets.filter((t) => t.status === st).length})`}
+              </button>
+            ))}
+          </div>
+
+          {filteredSupportTickets.length === 0 ? (
+            <div className="ap-empty">No support queries found for this filter.</div>
+          ) : (
+            <div className="ap-support-tickets-grid">
+              {filteredSupportTickets.map((t) => (
+                <div key={t._id || t.ticketId} className="ap-support-ticket-card">
+                  <div className="ap-ticket-card-header">
+                    <div className="ap-ticket-id-tag">
+                      <Headphones size={15} color="#FF5000" />
+                      <strong>#{t.ticketId}</strong>
+                    </div>
+                    <span className={`ap-badge ap-badge--${t.status === 'Open' ? 'hold' : t.status === 'In Progress' ? 'pending' : 'success'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+
+                  <div className="ap-ticket-meta-row">
+                    <div className="ap-ticket-meta-item">
+                      <span className="ap-ticket-meta-label">User Phone:</span>
+                      <strong className="ap-ticket-meta-val">{t.userPhone}</strong>
+                    </div>
+                    <div className="ap-ticket-meta-item">
+                      <span className="ap-ticket-meta-label">Category:</span>
+                      <span className="ap-ticket-category-tag">{t.category}</span>
+                    </div>
+                    <div className="ap-ticket-meta-item">
+                      <span className="ap-ticket-meta-label">Submitted:</span>
+                      <span className="ap-ticket-meta-val">{new Date(t.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                  </div>
+
+                  {/* Problem Description */}
+                  <div className="ap-ticket-problem-box">
+                    <span className="ap-ticket-problem-label">User Problem Description:</span>
+                    <p className="ap-ticket-problem-text">{t.message}</p>
+                  </div>
+
+                  {/* Attached Screenshot */}
+                  {t.screenshotUrl && (
+                    <div className="ap-ticket-screenshot-row">
+                      <span className="ap-ticket-problem-label">Attached Screenshot (Click to enlarge):</span>
+                      <img
+                        src={t.screenshotUrl}
+                        alt="User screenshot proof"
+                        className="ap-ticket-screenshot-thumb"
+                        onClick={() => setPreviewScreenshot(t.screenshotUrl)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Admin Reply */}
+                  {t.adminReply && (
+                    <div className="ap-ticket-reply-display">
+                      <span className="ap-ticket-reply-label">Current Admin Reply:</span>
+                      <p className="ap-ticket-reply-text">{t.adminReply}</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="ap-ticket-actions-row">
+                    {t.status !== 'In Progress' && (
+                      <button
+                        type="button"
+                        className="ap-ticket-btn in-progress"
+                        onClick={() => handleUpdateTicket(t._id, 'In Progress', t.adminReply)}
+                      >
+                        <Clock size={13} />
+                        <span>In Progress</span>
+                      </button>
+                    )}
+
+                    {t.status !== 'Resolved' && (
+                      <button
+                        type="button"
+                        className="ap-ticket-btn resolve"
+                        onClick={() => handleUpdateTicket(t._id, 'Resolved', t.adminReply)}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Mark Resolved</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="ap-ticket-btn reply"
+                      onClick={() => {
+                        setReplyModalTicket(t)
+                        setReplyInput(t.adminReply || '')
+                        setReplyStatusInput(t.status === 'Open' ? 'Resolved' : t.status)
+                      }}
+                    >
+                      <MessageSquare size={13} />
+                      <span>{t.adminReply ? 'Edit Reply' : 'Reply & Resolve'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1186,6 +1394,96 @@ export default function AdminPanel() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── SUPPORT REPLY MODAL ── */}
+      {replyModalTicket && (
+        <div className="ap-modal-overlay" onClick={() => setReplyModalTicket(null)}>
+          <div className="ap-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
+            <div className="ap-modal-header">
+              <h2>Reply to Support Ticket #{replyModalTicket.ticketId}</h2>
+              <button className="ap-modal-close" onClick={() => setReplyModalTicket(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="ap-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="ap-modal-row">
+                <span className="ap-modal-label">User Phone:</span>
+                <strong>{replyModalTicket.userPhone}</strong>
+              </div>
+              <div className="ap-modal-row">
+                <span className="ap-modal-label">Issue Category:</span>
+                <span className="ap-ticket-category-tag">{replyModalTicket.category}</span>
+              </div>
+              <div className="ap-modal-row">
+                <span className="ap-modal-label">User's Problem:</span>
+                <p className="ap-ticket-problem-text" style={{ margin: 0 }}>{replyModalTicket.message}</p>
+              </div>
+
+              <div className="ap-field" style={{ marginTop: 10 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 6 }}>
+                  Update Ticket Status:
+                </label>
+                <select
+                  value={replyStatusInput}
+                  onChange={(e) => setReplyStatusInput(e.target.value)}
+                  className="ap-select"
+                  style={{ width: '100%' }}
+                >
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              <div className="ap-field">
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 6 }}>
+                  Admin Reply to User (User will see this in their app):
+                </label>
+                <textarea
+                  rows={4}
+                  value={replyInput}
+                  onChange={(e) => setReplyInput(e.target.value)}
+                  placeholder="e.g. Aapka withdrawal check kar liya hai, 15 minute me bank me credit ho jayega..."
+                  className="ap-input"
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+
+            <div className="ap-modal-actions">
+              <button className="ap-btn-cancel" onClick={() => setReplyModalTicket(null)}>
+                Cancel
+              </button>
+              <button
+                className="ap-save-btn"
+                disabled={isUpdatingTicket}
+                onClick={() => handleUpdateTicket(replyModalTicket._id, replyStatusInput, replyInput)}
+              >
+                {isUpdatingTicket ? 'Saving...' : 'Send Reply & Update Status'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SCREENSHOT PREVIEW MODAL ── */}
+      {previewScreenshot && (
+        <div className="ap-modal-overlay" onClick={() => setPreviewScreenshot(null)}>
+          <div className="ap-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="ap-modal-header">
+              <h2>Screenshot Proof</h2>
+              <button className="ap-modal-close" onClick={() => setPreviewScreenshot(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="ap-modal-body" style={{ textAlign: 'center', padding: 14 }}>
+              <img src={previewScreenshot} alt="Full screenshot proof" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 10 }} />
+            </div>
           </div>
         </div>
       )}
