@@ -162,8 +162,8 @@ export default function UPIScreen({ onManageUPI, upis = [], onUpdateUpis }) {
             </div>
 
             <div className="upi-summary-meta">
-              <p>Total withdrawals today: ₹0.00</p>
-              <p>Number of withdrawals today: 0 times</p>
+              <p>Min withdrawal: ₹300.00</p>
+              <p>Daily limit: Up to ₹50,000 / day</p>
             </div>
           </div>
 
@@ -515,7 +515,7 @@ export default function UPIScreen({ onManageUPI, upis = [], onUpdateUpis }) {
               </div>
               <div className="status-modal-row">
                 <span>Withdrawal Limits</span>
-                <strong>Up to ₹50,000 / day</strong>
+                <strong>Min ₹300 • Up to ₹50,000 / day</strong>
               </div>
 
               <button

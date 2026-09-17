@@ -51,6 +51,12 @@ export default function SellScreen({
   useLockScroll(Boolean(selectedVideo) || isWithdrawalDetailsOpen)
 
   const handleManageSellClick = () => {
+    if (balance < 300) {
+      if (onShowToast) {
+        onShowToast(`⚠️ Minimum withdrawal amount is ₹300. Aapka current balance ₹${Number(balance).toFixed(2)} hai.`)
+      }
+      return
+    }
     if (onManageUPI) {
       onManageUPI()
     }
@@ -207,6 +213,16 @@ export default function SellScreen({
             <AlertCircle size={14} strokeWidth={2.4} />
             <span>Add UPI to start receiving instant withdrawals</span>
           </div>
+        ) : balance < 300 ? (
+          <div
+            className="sell-progress-status sell-status-warning"
+            style={{ background: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.35)', color: '#D97706', cursor: 'pointer' }}
+            onClick={() => onShowToast && onShowToast(`⚠️ Minimum withdrawal amount is ₹300. Aapka current balance ₹${Number(balance).toFixed(2)} hai.`)}
+            title="Minimum withdrawal amount is ₹300"
+          >
+            <AlertCircle size={14} strokeWidth={2.4} />
+            <span>Min. withdrawal is ₹300 (Current: ₹{Number(balance).toFixed(2)})</span>
+          </div>
         ) : (
           <div
             className="sell-progress-status"
@@ -226,6 +242,21 @@ export default function SellScreen({
           <span>Manage Sell HeroPay</span>
         </button>
       </div>
+
+      {/* Minimum Balance Warning Banner */}
+      {balance < 300 && (
+        <div className="sell-warning-notice">
+          <div className="sell-warning-icon-wrap">
+            <AlertCircle size={20} color="#D97706" strokeWidth={2.4} />
+          </div>
+          <div className="sell-warning-content">
+            <h4 className="sell-warning-title">Minimum Withdrawal Limit: ₹300.00</h4>
+            <p className="sell-warning-desc">
+              Withdrawal lagne ke liye aapke wallet me minimum <strong>₹300.00</strong> balance hona anivarya hai. Aapka current balance <strong>₹{Number(balance).toFixed(2)}</strong> hai.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Withdrawal Orders Section (Pending & Failed) */}
       {sellOrders && sellOrders.length > 0 && (

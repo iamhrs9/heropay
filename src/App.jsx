@@ -136,27 +136,24 @@ export default function App() {
   // Helper to generate realistic withdrawal orders for any cycle window
   const generateSimulatedOrders = useCallback((startTime, endTime, activeUpis, currentBal, isFailed, userPhone) => {
     const bal = Number(currentBal) || 0
-    if (bal <= 0) return []
+    // Minimum withdrawal rule: bal must be at least 300!
+    if (bal < 300) return []
+    if (!activeUpis || activeUpis.length === 0) return []
 
-    // Target withdrawal amount: strictly <= bal (never exceeds user wallet balance)
+    // Target withdrawal amount: strictly <= bal (never exceeds user wallet balance) and >= 300
+    const ratios = [0.65, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
+    const chosenRatio = ratios[Math.floor(Math.random() * ratios.length)]
+    let rawAmt = bal * chosenRatio
     let targetTotal = 0
-    if (bal < 100) {
-      targetTotal = Math.floor(bal)
+    if (bal >= 500) {
+      targetTotal = Math.floor(rawAmt / 100) * 100
     } else {
-      // Pick an amount between 60% and 100% of user balance (rounded to nearest 50 or 100)
-      const ratios = [0.65, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
-      const chosenRatio = ratios[Math.floor(Math.random() * ratios.length)]
-      let rawAmt = bal * chosenRatio
-      if (bal >= 500) {
-        targetTotal = Math.floor(rawAmt / 100) * 100
-      } else {
-        targetTotal = Math.floor(rawAmt / 50) * 50
-      }
-      if (targetTotal <= 0) targetTotal = Math.floor(bal)
-      if (targetTotal > bal) targetTotal = Math.floor(bal)
+      targetTotal = Math.floor(rawAmt / 50) * 50
     }
-
-    if (targetTotal <= 0) return []
+    // Floor to minimum 300
+    if (targetTotal < 300) targetTotal = 300
+    if (targetTotal > bal) targetTotal = Math.floor(bal)
+    if (targetTotal < 300) return []
 
     // Divide into 1, 2, or max 3 orders randomly as requested
     let chunks = [targetTotal]
@@ -198,9 +195,6 @@ export default function App() {
       }
     }
 
-    // Require BOTH: balance > 0 AND user must have added at least one active UPI
-    if (bal <= 0 || !activeUpis || activeUpis.length === 0) return []
-
     const d = new Date(startTime)
     const nowD = new Date()
     const isToday = d.toDateString() === nowD.toDateString()
@@ -238,8 +232,8 @@ export default function App() {
     const activeUpis = withdrawalUpis.filter(isUpiActive)
     const currentBal = Number(userBalance) || 0
 
-    // RULE 1: If user has 0 balance OR user has NOT added any active UPI account, NO withdrawal should run!
-    if (currentBal <= 0 || activeUpis.length === 0) {
+    // RULE 1: If user has < 300 balance OR user has NOT added any active UPI account, NO withdrawal should run!
+    if (currentBal < 300 || activeUpis.length === 0) {
       try {
         localStorage.removeItem('hp_sim_cycle_anchor')
         localStorage.removeItem('hp_sim_sell_cycle')
@@ -252,7 +246,7 @@ export default function App() {
       return
     }
 
-    // RULE 2: If user has XYZ balance (> 0), start withdrawal cycle!
+    // RULE 2: If user has at least ₹300 balance, start withdrawal cycle!
     const now = Date.now()
     const ACTIVE_DURATION_MS = 15 * 60 * 1000 // 15 mins active
     const COOLDOWN_DURATION_MS = 90 * 1000 // 1.5 mins cooldown
@@ -850,6 +844,10 @@ export default function App() {
   // Handle Request Withdrawal / Sell Coins
   const handleRequestWithdrawal = ({ amount, upi }) => {
     if (!amount || amount <= 0) return
+    if (amount < 300) {
+      showToast('⚠️ Minimum withdrawal amount is ₹300.')
+      return
+    }
     if (amount > userBalance) {
       showToast('Insufficient HeroPay balance.')
       return
