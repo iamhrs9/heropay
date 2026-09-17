@@ -1,0 +1,1520 @@
+/* ===================================================
+   HeroPay - Sell / Home Screen Styles (Pixel-Faithful)
+   =================================================== */
+
+.sell-screen-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 12px 16px 24px 16px;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Top App Header */
+.sell-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 2px 2px 2px;
+}
+
+.sell-brand-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sell-brand-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(255, 104, 16, 0.18));
+}
+
+.sell-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sell-brand-title {
+  font-family: var(--font-family-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.sell-brand-subtitle {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748B;
+  line-height: 1.2;
+}
+
+/* Record Button */
+.sell-record-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px -1px rgba(160, 120, 80, 0.08);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0F172A;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sell-record-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.sell-record-icon {
+  color: #475569;
+}
+
+/* Hero Balance Card */
+.sell-hero-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  padding: 16px 16px;
+  box-shadow: 0 12px 32px -6px rgba(180, 130, 80, 0.12), 0 2px 8px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.sell-hero-card-glow {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 120, 30, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.sell-hero-card-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  position: relative;
+  z-index: 1;
+  gap: 10px;
+}
+
+.sell-hero-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.sell-balance-label-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sell-balance-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.sell-info-btn {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sell-balance-value-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 10px 0;
+}
+
+.sell-gold-coin-large {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FDE68A 0%, #F59E0B 55%, #B45309 100%);
+  border: 2px solid #FEF3C7;
+  box-shadow: 0 6px 16px -2px rgba(217, 119, 6, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sell-coin-g {
+  font-family: var(--font-family-display);
+  font-weight: 900;
+  font-size: 24px;
+  color: #FFFFFF;
+  text-shadow: 0 1px 3px rgba(180, 83, 9, 0.6);
+}
+
+.sell-balance-amount {
+  font-family: var(--font-family-display);
+  font-size: 33px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.sell-balance-sub-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sell-income-tag {
+  font-size: 11.5px;
+  color: #526075;
+}
+
+.sell-award-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #526075;
+}
+
+/* Hero Right: Wallet Art & Deposit Button */
+.sell-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 135px;
+  flex-shrink: 0;
+}
+
+.sell-wallet-illustration {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  position: relative;
+  width: 100%;
+  height: 68px;
+}
+
+.sell-wallet-script {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FF7B25;
+  line-height: 1.05;
+  text-align: right;
+  transform: rotate(-3deg);
+  margin-bottom: -4px;
+  z-index: 3;
+}
+
+.sell-wallet-art {
+  position: relative;
+  width: 82px;
+  height: 52px;
+  margin-right: 4px;
+}
+
+.wallet-body {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 74px;
+  height: 44px;
+  background: linear-gradient(135deg, #FFF1E6 0%, #FCD7BE 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px -4px rgba(220, 110, 40, 0.25);
+  z-index: 2;
+}
+
+.wallet-card-blue {
+  position: absolute;
+  top: -8px;
+  left: 6px;
+  width: 44px;
+  height: 28px;
+  background: linear-gradient(135deg, #38BDF8 0%, #0284C7 100%);
+  border-radius: 6px;
+  transform: rotate(-10deg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+.wallet-card-orange {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  width: 44px;
+  height: 28px;
+  background: linear-gradient(135deg, #FB923C 0%, #EA580C 100%);
+  border-radius: 6px;
+  transform: rotate(14deg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+.wallet-clasp {
+  position: absolute;
+  top: 50%;
+  left: -2px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 16px;
+  background: #E06D14;
+  border-radius: 0 6px 6px 0;
+  border: 1px solid #FFE4D0;
+}
+
+.wallet-coin-float {
+  position: absolute;
+  bottom: -6px;
+  left: -4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FBBF24 0%, #D97706 100%);
+  border: 1.5px solid #FEF3C7;
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.4);
+  z-index: 4;
+}
+
+.wallet-crown-float {
+  position: absolute;
+  top: -16px;
+  right: -2px;
+  font-size: 16px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  z-index: 5;
+  animation: floatBounce 2.5s ease-in-out infinite;
+}
+
+@keyframes floatBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.sell-deposit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: linear-gradient(90deg, #FF7D28 0%, #FF5000 100%);
+  color: #FFFFFF;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 18px;
+  box-shadow: 0 6px 16px -2px rgba(255, 90, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  margin-top: 6px;
+}
+
+.sell-deposit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -2px rgba(255, 90, 0, 0.48);
+}
+
+.sell-deposit-btn:active {
+  transform: scale(0.97);
+}
+
+/* Active Withdrawal UPI Card */
+.sell-withdrawal-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(255, 255, 255, 0.88);
+  border-radius: 22px;
+  padding: 14px 16px 16px 16px;
+  box-shadow: 0 8px 24px -4px rgba(180, 130, 80, 0.08);
+}
+
+.sell-upi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.sell-upi-header-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sell-upi-card-icon {
+  color: #526075;
+}
+
+.sell-upi-title {
+  font-size: 13px;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.sell-upi-title strong {
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.sell-upi-manage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0F172A;
+  cursor: pointer;
+}
+
+.sell-upi-manage-btn:hover {
+  color: var(--color-primary);
+}
+
+.sell-metrics-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 14px 0 10px 0;
+}
+
+.sell-metric-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.sell-metric-value {
+  font-family: var(--font-family-display);
+  font-size: 24px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+}
+
+.sell-metric-label {
+  font-size: 11.5px;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.sell-metric-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.sell-progress-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #059669;
+  margin-bottom: 12px;
+}
+
+.sell-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+.sell-manage-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+  color: #FFFFFF;
+  font-family: var(--font-family-base);
+  font-size: 14.5px;
+  font-weight: 700;
+  border-radius: 23px;
+  box-shadow: 0 8px 20px -2px rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sell-manage-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -2px rgba(16, 185, 129, 0.45);
+}
+
+.sell-manage-action-btn:active {
+  transform: scale(0.985);
+}
+
+/* 4 Quick Action Channels Grid */
+.sell-channels-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.sell-channel-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  padding: 12px 6px;
+  box-shadow: 0 4px 14px -2px rgba(180, 130, 80, 0.06);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.sell-channel-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+}
+
+.sell-channel-item:active {
+  transform: scale(0.96);
+}
+
+.sell-channel-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.channel-blue {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.channel-icon-rotate {
+  transform: translate(-1px, 1px) rotate(-15deg);
+}
+
+.channel-indigo {
+  background: #EEF2FF;
+  color: #3B82F6;
+}
+
+.channel-red {
+  background: #FEE2E2;
+  color: #EF4444;
+}
+
+.channel-green {
+  background: #DCFCE7;
+  color: #10B981;
+}
+
+.sell-support-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+}
+
+.sell-channel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+}
+
+/* Banner 1: Invitation Rewards */
+.sell-promo-banner {
+  background: linear-gradient(135deg, #FFF2E8 0%, #FFE5D4 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 20px -2px rgba(255, 120, 30, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.banner-invitation-content {
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.1;
+}
+
+.banner-title-dark {
+  font-family: var(--font-family-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+.banner-title-orange {
+  font-family: var(--font-family-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: #FF5A00;
+  letter-spacing: -0.01em;
+}
+
+.banner-sub-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #526075;
+  margin: 4px 0 8px 0;
+}
+
+.banner-sub-text strong {
+  color: #0F172A;
+  font-size: 13px;
+}
+
+.banner-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.banner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 104, 16, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.banner-dot.active {
+  width: 14px;
+  border-radius: 4px;
+  background: #FF6810;
+}
+
+/* 3D Gift Box Art */
+.banner-gift-illustration {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 120px;
+  height: 62px;
+  justify-content: flex-end;
+}
+
+.banner-gift-script {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #FF7B25;
+  line-height: 1.05;
+  text-align: right;
+  margin-right: 6px;
+  transform: rotate(-4deg);
+}
+
+.banner-3d-gift {
+  position: relative;
+  width: 50px;
+  height: 50px;
+}
+
+.gift-box {
+  width: 44px;
+  height: 42px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  position: relative;
+  box-shadow: 0 8px 18px -2px rgba(255, 104, 16, 0.25);
+  border: 1px solid #FFE3D0;
+  overflow: hidden;
+}
+
+.gift-ribbon-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  background: linear-gradient(180deg, #FF7B25 0%, #EA580C 100%);
+}
+
+.gift-ribbon-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 10px;
+  background: linear-gradient(90deg, #FF7B25 0%, #EA580C 100%);
+}
+
+.gift-coin-1 {
+  position: absolute;
+  bottom: -4px;
+  left: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FBBF24 0%, #D97706 100%);
+  border: 1px solid #FEF3C7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.gift-coin-2 {
+  position: absolute;
+  bottom: 2px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FBBF24 0%, #D97706 100%);
+  border: 1px solid #FEF3C7;
+}
+
+/* Banner 2: Individual Earnings */
+.banner-individual {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  padding: 12px 16px;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.banner-individual:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.banner-earnings-icon-wrap {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 3D Bar Chart Visual */
+.chart-3d-art {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 36px;
+  position: relative;
+}
+
+.chart-bar {
+  width: 10px;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+}
+
+.bar-1 { height: 16px; }
+.bar-2 { height: 26px; }
+.bar-3 {
+  height: 34px;
+  background: linear-gradient(180deg, #60A5FA 0%, #2563EB 100%);
+}
+
+.chart-coin-bubble {
+  position: absolute;
+  bottom: -3px;
+  left: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #FBBF24 0%, #D97706 100%);
+  border: 1px solid #FEF3C7;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.banner-earnings-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.banner-earnings-title {
+  font-family: var(--font-family-display);
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+.banner-earnings-sub {
+  font-size: 12px;
+  color: #526075;
+  margin-top: 2px;
+}
+
+.text-highlight-orange {
+  color: #FF5A00;
+  font-weight: 800;
+}
+
+.banner-arrow-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0F172A;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* Video Tutorials Section */
+.sell-videos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sell-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.sell-section-title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.sell-section-sub {
+  font-size: 11.5px;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.sell-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 104, 16, 0.1);
+  color: var(--color-primary);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sell-view-all-btn:hover {
+  background: rgba(255, 104, 16, 0.18);
+}
+
+.sell-videos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sell-video-card {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 18px;
+  padding: 10px 12px;
+  gap: 12px;
+  box-shadow: 0 4px 14px -2px rgba(180, 130, 80, 0.06);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sell-video-card:hover {
+  background: rgba(255, 255, 255, 0.92);
+  transform: translateY(-1px);
+}
+
+.sell-video-card:active {
+  transform: scale(0.985);
+}
+
+.sell-video-thumb {
+  width: 68px;
+  height: 48px;
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.sell-video-play-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 2px;
+}
+
+.sell-video-duration {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #FFFFFF;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.sell-video-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sell-video-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sell-video-desc {
+  font-size: 11px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.sell-video-action {
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sell-video-chevron {
+  transition: transform 0.2s ease;
+}
+
+.sell-video-card:hover .sell-video-chevron {
+  transform: translateX(2px);
+  color: var(--color-primary);
+}
+
+/* Video Modal */
+.sell-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  animation: fadeIn 0.2s ease-out;
+  touch-action: none;
+}
+
+.sell-video-modal {
+  background: #FFFFFF;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 380px;
+  padding: 20px 20px 24px 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  animation: zoomIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.sell-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sell-modal-header h4 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.sell-modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sell-video-player-box {
+  width: 100%;
+  height: 180px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #FFFFFF;
+}
+
+.sell-player-play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.sell-player-tag {
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.sell-modal-desc {
+  font-size: 13px;
+  color: #526075;
+  margin-top: 14px;
+  line-height: 1.4;
+}
+
+/* Sell Coins / Withdrawal Action Modal Sheet */
+.sell-action-modal-sheet {
+  background: #FFFFFF;
+  border-radius: 28px 28px 24px 24px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 16px 20px 24px 20px;
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  animation: slideUpModal 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sell-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #CBD5E1;
+  border-radius: 2px;
+  align-self: center;
+  margin-bottom: 12px;
+}
+
+.sell-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sell-sheet-title-box h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+}
+
+.sell-sheet-title-box p {
+  font-size: 12px;
+  color: #64748B;
+  margin: 3px 0 0 0;
+}
+
+.sell-sheet-close-btn {
+  background: #F1F5F9;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748B;
+  transition: all 0.15s ease;
+}
+
+.sell-sheet-close-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Balance Box */
+.sell-withdraw-balance-box {
+  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  border: 1px solid #BBF7D0;
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.balance-info-left .balance-label {
+  font-size: 11.5px;
+  color: #166534;
+  font-weight: 600;
+  display: block;
+}
+
+.balance-info-left .balance-val {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.balance-info-left .balance-val strong {
+  font-size: 16px;
+  color: #15803D;
+  font-weight: 800;
+}
+
+.balance-badge {
+  background: #15803D;
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.sell-form-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #DC2626;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+/* Amount Input */
+.sell-amount-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.sell-input-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sell-amount-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sell-currency-prefix {
+  position: absolute;
+  left: 14px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.sell-amount-input {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  border: 1.5px solid #CBD5E1;
+  padding: 0 14px 0 32px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0F172A;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.sell-amount-input:focus {
+  border-color: #059669;
+}
+
+.sell-quick-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sell-quick-chip {
+  flex: 1;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sell-quick-chip.active {
+  background: #059669;
+  color: #FFFFFF;
+  border-color: #059669;
+}
+
+.sell-quick-chip.max-chip {
+  background: #FFF7ED;
+  color: #C2410C;
+  border-color: #FED7AA;
+}
+
+/* UPI Destination Picker */
+.sell-upi-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.sell-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sell-add-upi-link {
+  background: transparent;
+  border: none;
+  color: #059669;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sell-upi-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sell-upi-option-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #E2E8F0;
+  background: #F8FAFC;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sell-upi-option-card.selected {
+  border-color: #059669;
+  background: #F0FDF4;
+}
+
+.sell-upi-radio {
+  display: none;
+}
+
+.sell-upi-option-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.upi-provider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upi-provider {
+  font-size: 13px;
+  color: #0F172A;
+}
+
+.upi-phone {
+  font-size: 11px;
+  color: #64748B;
+}
+
+.upi-vpa {
+  font-size: 11.5px;
+  color: #4F46E5;
+  font-weight: 600;
+}
+
+/* Payout Summary */
+.sell-payout-summary {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.sell-payout-summary .summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #64748B;
+}
+
+.sell-payout-summary .summary-row.total-row {
+  border-top: 1px solid #E2E8F0;
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.sell-confirm-withdraw-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  color: #FFFFFF;
+  font-size: 14.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  transition: all 0.15s ease;
+}
+
+.sell-confirm-withdraw-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
+}
+
+/* Active Withdrawal Modal */
+.active-withdrawal-card-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.active-withdraw-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.active-withdraw-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.active-withdraw-amount-row .amount-digits {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0F172A;
+}
+
+.active-withdraw-details-list {
+  width: 100%;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.active-withdraw-details-list .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #64748B;
+}
+
+.active-withdraw-details-list .detail-row strong {
+  color: #0F172A;
+}
+
+.active-withdraw-note {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.45;
+  margin: 0 0 16px 0;
+}
+
+.active-withdraw-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.active-withdraw-record-btn {
+  flex: 1.2;
+  height: 44px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  color: #FFFFFF;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+}
+
+.active-withdraw-close-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid #CBD5E1;
+  background: #F1F5F9;
+  color: #334155;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -1,0 +1,7 @@
+{
+  "name": "heropay-server",
+  "version": "1.0.0",
+  "description": "HeroPay Express + MongoDB backend",
+  "main": "index.js",
+  "type": "commonjs"
+}

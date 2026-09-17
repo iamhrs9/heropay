@@ -1,0 +1,96 @@
+.hp-input-group {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1.2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 18px;
+  padding: 10px 14px;
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 8px -2px rgba(160, 120, 80, 0.05);
+}
+
+.hp-input-group:focus-within {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 104, 16, 0.5);
+  box-shadow: 0 4px 14px -2px rgba(255, 104, 16, 0.16);
+}
+
+.hp-input-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 104, 16, 0.09);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.hp-input-group:focus-within .hp-input-icon-box {
+  background: rgba(255, 104, 16, 0.15);
+}
+
+.hp-input-icon {
+  color: var(--color-primary);
+}
+
+.hp-input-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.hp-input-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
+}
+
+.hp-input-control {
+  font-family: var(--font-family-base);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  padding: 0;
+  line-height: 1.3;
+}
+
+.hp-input-control::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.hp-input-right-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.hp-input-toggle-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  transition: color 0.15s ease;
+}
+
+.hp-input-toggle-btn:hover {
+  color: var(--text-primary);
+}

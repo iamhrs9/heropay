@@ -1,0 +1,86 @@
+require('dotenv').config()
+const express = require('express')
+const cors = require('cors')
+const mongoose = require('mongoose')
+const Admin = require('./models/Admin')
+
+const authRoutes = require('./routes/auth')
+const orderRoutes = require('./routes/orders')
+const adminRoutes = require('./routes/admin')
+
+const app = express()
+
+// ── Middleware ──────────────────────────────────────────────────────
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true }))
+
+// CORS: allow Vite dev server (port 3000) and production origin
+app.use(
+  cors({
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001'
+    ],
+    credentials: true
+  })
+)
+
+// ── Routes ──────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes)
+app.use('/api/orders', orderRoutes)
+app.use('/api/admin', adminRoutes)
+
+// Health check
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'HeroPay API' }))
+
+// ── MongoDB Connection + Server Start ───────────────────────────────
+const startServer = async () => {
+  try {
+    console.log('⏳ Connecting to MongoDB (myheropay)...')
+    await mongoose.connect(process.env.MONGO_URI)
+    console.log('✅ MongoDB connected → database: myheropay')
+
+    // Seed admin account on first run (only if not already present)
+    await seedAdmin()
+
+    const PORT = process.env.PORT || 5000
+    app.listen(PORT, () => {
+      console.log(`🚀 HeroPay API running on http://localhost:${PORT}`)
+      console.log(`🛡️  Admin panel accessible at /adminonly`)
+    })
+  } catch (err) {
+    console.error('❌ Failed to connect to MongoDB:', err.message)
+    process.exit(1)
+  }
+}
+
+// ── Seed / Sync Admin password from .env into MongoDB ───────────────
+const seedAdmin = async () => {
+  try {
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (!adminPassword) {
+      console.warn('⚠️  ADMIN_PASSWORD not set in .env — skipping admin setup.')
+      return
+    }
+
+    const existing = await Admin.findOne({ username: 'admin' })
+    if (!existing) {
+      // First run: create admin (password will be hashed by pre-save hook)
+      await Admin.create({ username: 'admin', password: adminPassword })
+      console.log(`🔑 Admin account created → password hashed & saved to myheroadmin`)
+    } else {
+      // Subsequent runs: always re-hash and update password from .env
+      existing.password = adminPassword  // pre-save hook will hash it
+      await existing.save()
+      console.log(`🔑 Admin password synced from .env → hashed & updated in myheroadmin`)
+    }
+    console.log(`   Collections: myheroadmin, myherouser, myheroorder`)
+  } catch (err) {
+    console.error('Admin seed error:', err.message)
+  }
+}
+
+startServer()

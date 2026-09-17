@@ -1,0 +1,72 @@
+.provider-logo-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  vertical-align: middle;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.provider-logo-pill .provider-svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-height: 100%;
+}
+
+/* Sizing variations */
+.provider-logo-pill.size-sm {
+  height: 24px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.provider-logo-pill.size-md {
+  height: 32px;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.provider-logo-pill.size-lg {
+  height: 42px;
+  padding: 6px 14px;
+  border-radius: 10px;
+}
+
+.provider-logo-pill.size-icon {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 8px;
+}
+
+/* Specific Provider styling adjustments if needed */
+.provider-logo-pill--paytm {
+  background: #ffffff;
+  border-color: #E2E8F0;
+}
+
+.provider-logo-pill--gpay {
+  background: #ffffff;
+  border-color: #E2E8F0;
+}
+
+.provider-logo-pill--phonepe {
+  background: #ffffff;
+  border-color: #F1EAFA;
+}
+
+.provider-logo-pill--mobikwik {
+  background: #ffffff;
+  border-color: #E0F5FC;
+}
+
+.provider-logo-pill--upi {
+  background: #ffffff;
+  border-color: #E2E8F0;
+}
