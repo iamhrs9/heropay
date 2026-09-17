@@ -133,23 +133,28 @@ export default function App() {
 
   // Helper to generate realistic withdrawal orders for any cycle window
   const generateSimulatedOrders = useCallback((startTime, endTime, activeUpis, currentBal, isFailed) => {
-    let targetTotal = 0
-    if (currentBal > 0) {
-      const maxPossible = Math.floor(currentBal)
-      const validAmounts = [100, 200, 300, 400, 500, 600, 700, 800, 1000, 1200, 1500].filter(
-        (v) => v <= maxPossible
-      )
-      if (validAmounts.length === 0) {
-        targetTotal = Math.min(maxPossible, 100)
-      } else {
-        const candidatePool = validAmounts.slice(Math.max(0, validAmounts.length - 3))
-        targetTotal = candidatePool[Math.floor(Math.random() * candidatePool.length)]
-      }
-    } else {
-      const testPool = [200, 300, 500, 700]
-      targetTotal = testPool[Math.floor(Math.random() * testPool.length)]
+    // If balance is 0 or less than 100, NO withdrawal can be initiated
+    if (!currentBal || currentBal < 100 || !activeUpis || activeUpis.length === 0) {
+      return []
     }
-    if (!targetTotal || targetTotal <= 0) targetTotal = 200
+
+    const maxPossible = Math.floor(currentBal)
+    const validAmounts = [100, 200, 300, 400, 500, 600, 700, 800, 1000, 1200, 1500, 2000, 2500, 3000, 5000].filter(
+      (v) => v <= maxPossible
+    )
+
+    let targetTotal = 0
+    if (validAmounts.length === 0) {
+      targetTotal = maxPossible
+    } else {
+      // Pick an amount close to or slightly less than user's balance
+      const candidatePool = validAmounts.slice(Math.max(0, validAmounts.length - 4))
+      targetTotal = candidatePool[Math.floor(Math.random() * candidatePool.length)]
+    }
+
+    if (!targetTotal || targetTotal <= 0 || targetTotal > maxPossible) {
+      return []
+    }
 
     let chunks = [targetTotal]
     if (targetTotal >= 400 && Math.random() > 0.3) {
@@ -160,7 +165,9 @@ export default function App() {
       else chunk1 = Math.round((targetTotal * 0.6) / 100) * 100
       if (chunk1 >= targetTotal) chunk1 = targetTotal - 100
       const chunk2 = targetTotal - chunk1
-      chunks = [chunk1, chunk2]
+      if (chunk1 > 0 && chunk2 > 0) {
+        chunks = [chunk1, chunk2]
+      }
     }
 
     const d = new Date(startTime)
@@ -198,19 +205,19 @@ export default function App() {
   // Continuous Simulator Lifecycle Engine: runs even when app was closed, offline, or minimized
   const reconcileCycles = useCallback(() => {
     const activeUpis = withdrawalUpis.filter(isUpiActive)
-    if (activeUpis.length === 0) {
+    const currentBal = Number(userBalance) || 0
+
+    // If no active UPIs or user has 0/insufficient balance, clear any pending withdrawals!
+    if (activeUpis.length === 0 || currentBal < 100) {
       try {
         localStorage.removeItem('hp_sim_cycle_anchor')
+        localStorage.removeItem('hp_sim_sell_cycle')
       } catch {}
+      setSellSimCycle(null)
       setSimulatedSellOrders((prev) => {
         if (!prev.some((o) => o.status === 'Pending')) return prev
-        return prev.map((o) =>
-          o.status === 'Pending'
-            ? { ...o, status: 'Failed', actionNote: 'Order failed because of your UPI issue' }
-            : o
-        )
+        return prev.filter((o) => o.status !== 'Pending')
       })
-      setSellSimCycle(null)
       return
     }
 
@@ -286,8 +293,16 @@ export default function App() {
       } catch {}
 
       setSimulatedSellOrders((prev) => {
-        const hasActivePending = prev.some(
-          (o) => o.status === 'Pending' && o.expiresAt && o.expiresAt > now
+        const pendingOrders = prev.filter((o) => o.status === 'Pending')
+        const pendingTotal = pendingOrders.reduce((sum, o) => sum + (Number(o.coins) || 0), 0)
+
+        // If pending total exceeds user's wallet balance or user has 0 balance, immediately wipe pending orders
+        if (pendingTotal > currentBal || currentBal < 100) {
+          return prev.filter((o) => o.status !== 'Pending')
+        }
+
+        const hasActivePending = pendingOrders.length > 0 && pendingOrders.some(
+          (o) => o.expiresAt && o.expiresAt > now
         )
         if (hasActivePending) {
           return prev.map((o) =>
@@ -297,12 +312,12 @@ export default function App() {
           )
         }
 
-        // Generate current cycle's pending withdrawal batch
+        // Generate current cycle's pending withdrawal batch strictly <= currentBal
         const newBatch = generateSimulatedOrders(
           anchor,
           activeEndsAt,
           activeUpis,
-          Number(userBalance) || 0,
+          currentBal,
           false
         )
         const nonPending = prev.filter((o) => o.status !== 'Pending')
