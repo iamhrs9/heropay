@@ -4,6 +4,8 @@ const cors = require('cors')
 const mongoose = require('mongoose')
 const Admin = require('./models/Admin')
 
+const path = require('path')
+
 const authRoutes = require('./routes/auth')
 const orderRoutes = require('./routes/orders')
 const adminRoutes = require('./routes/admin')
@@ -14,27 +16,22 @@ const app = express()
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
-// CORS: allow Vite dev server (port 3000) and production origin
-app.use(
-  cors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001'
-    ],
-    credentials: true
-  })
-)
+// CORS: allow all origins in production, localhost in development
+app.use(cors({ origin: true, credentials: true }))
 
-// ── Routes ──────────────────────────────────────────────────────────
+// ── API Routes ──────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/admin', adminRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'HeroPay API' }))
+
+// ── Static Frontend Serving (Production) ────────────────────────────
+app.use(express.static(path.join(__dirname, '../dist')))
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'))
+})
 
 // ── MongoDB Connection + Server Start ───────────────────────────────
 const startServer = async () => {

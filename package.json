@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "start": "node server/index.js",
     "dev": "vite",
     "server": "node server/index.js",
     "dev:all": "concurrently --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,yellow\" \"vite\" \"node server/index.js\"",
