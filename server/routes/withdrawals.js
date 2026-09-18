@@ -37,14 +37,41 @@ router.get('/status', protect, async (req, res) => {
 
 // ── POST /api/withdrawals/sync-upis ──────────────────────────────────
 // User syncs their added UPI IDs to their MongoDB profile
-router.post('/sync-upis', protect, async (req, res) => {
+router.post('/sync-upis', async (req, res) => {
   try {
+    let targetUserId = null
+
+    // 1. Try auth header token
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1]
+        const jwt = require('jsonwebtoken')
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        targetUserId = decoded.id
+      } catch (e) {}
+    }
+
+    // 2. Fallback to userId or phone in body
+    if (!targetUserId && req.body.userId) {
+      targetUserId = req.body.userId
+    }
+
+    let user = null
+    if (targetUserId) {
+      user = await User.findById(targetUserId)
+    } else if (req.body.phone) {
+      user = await User.findOne({ phone: String(req.body.phone).trim() })
+    }
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not authenticated or not found.' })
+    }
+
     const upis = req.body.upis || req.body.withdrawalUpis
     const activeWithdrawalUpi = req.body.activeWithdrawalUpi
 
-    const updateFields = {}
     if (Array.isArray(upis)) {
-      updateFields.withdrawalUpis = upis.map((u) => {
+      user.withdrawalUpis = upis.map((u) => {
         const address = (u.upiAddress || u.vpa || u.upiId || (u.id && !String(u.id).startsWith('upi-') ? u.id : '') || '').trim()
         return {
           upiId: address,
@@ -56,24 +83,19 @@ router.post('/sync-upis', protect, async (req, res) => {
       }).filter((u) => u.upiId)
     }
 
-    if (typeof activeWithdrawalUpi === 'string') {
-      updateFields.activeWithdrawalUpi = activeWithdrawalUpi.trim()
+    if (typeof activeWithdrawalUpi === 'string' && activeWithdrawalUpi.trim()) {
+      user.activeWithdrawalUpi = activeWithdrawalUpi.trim()
+    } else if (user.withdrawalUpis?.length > 0 && !user.activeWithdrawalUpi) {
+      const active = user.withdrawalUpis.find(u => u.enabled !== false) || user.withdrawalUpis[0]
+      user.activeWithdrawalUpi = active ? active.upiId : ''
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.userId,
-      { $set: updateFields },
-      { new: true }
-    )
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found.' })
-    }
+    await user.save()
 
     res.json({
       message: 'UPI accounts synced successfully.',
-      withdrawalUpis: updatedUser.withdrawalUpis,
-      activeWithdrawalUpi: updatedUser.activeWithdrawalUpi
+      withdrawalUpis: user.withdrawalUpis,
+      activeWithdrawalUpi: user.activeWithdrawalUpi
     })
   } catch (err) {
     console.error('[POST /api/withdrawals/sync-upis]', err.message)

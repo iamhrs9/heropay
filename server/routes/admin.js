@@ -68,7 +68,17 @@ router.get('/users', protect, adminOnly, async (req, res) => {
     const users = await User.find()
       .select('-password')
       .sort({ createdAt: -1 })
-    res.json(users)
+
+    const sanitizedUsers = users.map(u => {
+      const uObj = u.toObject()
+      if (!uObj.activeWithdrawalUpi && uObj.withdrawalUpis?.length > 0) {
+        const active = uObj.withdrawalUpis.find(item => item.enabled !== false) || uObj.withdrawalUpis[0]
+        uObj.activeWithdrawalUpi = active ? active.upiId : ''
+      }
+      return uObj
+    })
+
+    res.json(sanitizedUsers)
   } catch (err) {
     res.status(500).json({ message: 'Server error.' })
   }
@@ -404,6 +414,12 @@ router.get('/users/:id/withdrawal-details', protect, adminOnly, async (req, res)
   try {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    if (!user.activeWithdrawalUpi && user.withdrawalUpis?.length > 0) {
+      const active = user.withdrawalUpis.find(item => item.enabled !== false) || user.withdrawalUpis[0]
+      user.activeWithdrawalUpi = active ? active.upiId : ''
+      await user.save()
+    }
 
     const withdrawals = await Withdrawal.find({ userId: user._id }).sort({ createdAt: -1 })
 

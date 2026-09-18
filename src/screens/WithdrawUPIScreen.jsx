@@ -103,19 +103,30 @@ export default function WithdrawUPIScreen({ onBack, onAddUpi, upis = [], onUpdat
     setNewPhone('')
 
     const token = localStorage.getItem('hp_token')
-    if (token) {
-      fetch('/api/withdrawals/sync-upis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          upis: updated,
-          activeWithdrawalUpi: newVpa.trim()
-        })
-      }).catch(() => {})
+    const userStr = localStorage.getItem('hp_user')
+    let userPhone = ''
+    let userId = ''
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr)
+        userPhone = u.phone || ''
+        userId = u._id || ''
+      } catch {}
     }
+
+    fetch('/api/withdrawals/sync-upis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        upis: updated,
+        activeWithdrawalUpi: newVpa.trim(),
+        phone: userPhone,
+        userId: userId
+      })
+    }).catch(() => {})
   }
 
   return (

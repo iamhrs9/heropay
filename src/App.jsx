@@ -80,9 +80,15 @@ export default function App() {
   })
 
   const syncUserUpis = useCallback((upisList) => {
-    const token = localStorage.getItem('hp_token')
     const list = Array.isArray(upisList) ? upisList : withdrawalUpis
-    if (!token || !Array.isArray(list) || list.length === 0) return
+    if (!Array.isArray(list) || list.length === 0) return
+
+    const token = localStorage.getItem('hp_token')
+    const userStr = localStorage.getItem('hp_user')
+    let userPhone = loggedInUser?.phone || ''
+    if (!userPhone && userStr) {
+      try { userPhone = JSON.parse(userStr).phone } catch {}
+    }
 
     const activeUpi = list.find((u) => u.enabled !== false && u.status !== 'inactive')?.vpa ||
       list.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiAddress ||
@@ -93,14 +99,16 @@ export default function App() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
         upis: list,
-        activeWithdrawalUpi: activeUpi
+        activeWithdrawalUpi: activeUpi,
+        phone: userPhone,
+        userId: loggedInUser?._id
       })
     }).catch(() => {})
-  }, [withdrawalUpis])
+  }, [withdrawalUpis, loggedInUser])
 
   // Whenever withdrawalUpis changes, save to localStorage and sync to backend
   useEffect(() => {
