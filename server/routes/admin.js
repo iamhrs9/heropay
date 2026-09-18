@@ -425,6 +425,51 @@ router.get('/users/:id/withdrawal-details', protect, adminOnly, async (req, res)
   }
 })
 
+// POST /api/admin/users/:id/update-upi — Admin adds or updates user's UPI directly
+router.post('/users/:id/update-upi', protect, adminOnly, async (req, res) => {
+  try {
+    const { upiId, payeeName } = req.body
+    const cleanUpi = (upiId || '').trim()
+    if (!cleanUpi) {
+      return res.status(400).json({ message: 'Please provide a valid UPI ID.' })
+    }
+
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    if (!user.withdrawalUpis) user.withdrawalUpis = []
+
+    const existingIdx = user.withdrawalUpis.findIndex(u => u.upiId && u.upiId.toLowerCase() === cleanUpi.toLowerCase())
+    if (existingIdx >= 0) {
+      user.withdrawalUpis[existingIdx].payeeName = payeeName ? payeeName.trim() : user.withdrawalUpis[existingIdx].payeeName
+      user.withdrawalUpis[existingIdx].enabled = true
+    } else {
+      user.withdrawalUpis.unshift({
+        upiId: cleanUpi,
+        payeeName: payeeName ? payeeName.trim() : user.fullName,
+        isDefault: true,
+        enabled: true,
+        addedAt: new Date()
+      })
+    }
+
+    user.activeWithdrawalUpi = cleanUpi
+    await user.save()
+
+    res.json({
+      message: 'User UPI saved successfully!',
+      user: {
+        _id: user._id,
+        activeWithdrawalUpi: user.activeWithdrawalUpi,
+        withdrawalUpis: user.withdrawalUpis
+      }
+    })
+  } catch (err) {
+    console.error('[POST /api/admin/users/:id/update-upi]', err.message)
+    res.status(500).json({ message: 'Server error updating user UPI.' })
+  }
+})
+
 // POST /api/admin/users/:id/manual-withdrawal — Create manual withdrawal & deduct balance
 router.post('/users/:id/manual-withdrawal', protect, adminOnly, async (req, res) => {
   try {

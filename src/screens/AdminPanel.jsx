@@ -82,6 +82,9 @@ export default function AdminPanel() {
     utr: ''
   })
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false)
+  const [adminNewUpiId, setAdminNewUpiId] = useState('')
+  const [adminNewPayeeName, setAdminNewPayeeName] = useState('')
+  const [isSavingUpi, setIsSavingUpi] = useState(false)
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
@@ -588,6 +591,52 @@ export default function AdminPanel() {
     }
   }
 
+  const handleAdminSaveUpi = async (e) => {
+    e?.preventDefault()
+    if (!withdrawalModalUser || !adminNewUpiId.trim()) return
+    setIsSavingUpi(true)
+    try {
+      const res = await fetch(`${API}/users/${withdrawalModalUser._id}/update-upi`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          upiId: adminNewUpiId.trim(),
+          payeeName: adminNewPayeeName.trim()
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to save UPI.')
+      showToast('User UPI added / updated successfully!')
+      setAdminNewUpiId('')
+      setAdminNewPayeeName('')
+
+      setUserWithdrawalDetails(prev => ({
+        ...prev,
+        user: {
+          ...prev?.user,
+          activeWithdrawalUpi: data.user.activeWithdrawalUpi,
+          withdrawalUpis: data.user.withdrawalUpis
+        }
+      }))
+      setWithdrawalModalUser(prev => ({
+        ...prev,
+        activeWithdrawalUpi: data.user.activeWithdrawalUpi,
+        withdrawalUpis: data.user.withdrawalUpis
+      }))
+      setUsers(prev => prev.map(u => u._id === withdrawalModalUser._id ? {
+        ...u,
+        activeWithdrawalUpi: data.user.activeWithdrawalUpi,
+        withdrawalUpis: data.user.withdrawalUpis
+      } : u))
+
+      setManualWithdrawalForm(f => ({ ...f, upiId: data.user.activeWithdrawalUpi }))
+    } catch (err) {
+      showToast(err.message, 'error')
+    } finally {
+      setIsSavingUpi(false)
+    }
+  }
+
   const handleCreateManualWithdrawal = async (e) => {
     e?.preventDefault()
     if (!withdrawalModalUser) return
@@ -948,7 +997,18 @@ export default function AdminPanel() {
                           </div>
                         </div>
                       </td>
-                      <td>{user.phone}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{user.phone}</div>
+                        <div style={{ fontSize: 11, marginTop: 2 }}>
+                          {user.activeWithdrawalUpi || user.withdrawalUpis?.[0]?.upiId ? (
+                            <span style={{ color: '#10B981', fontWeight: 600 }}>
+                              📱 {user.activeWithdrawalUpi || user.withdrawalUpis[0].upiId}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--ap-text-dim)' }}>No UPI</span>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         <span className="ap-coin-val">⭐ {user.balance?.toFixed(2)}</span>
                       </td>
@@ -1849,6 +1909,64 @@ export default function AdminPanel() {
                     })}
                   </div>
                 )}
+
+                {/* Admin Direct Add / Edit UPI Section */}
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--ap-border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>
+                    + Add / Update User UPI Directly (Admin Control)
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9876543210@paytm or name@oksbi"
+                      value={adminNewUpiId}
+                      onChange={(e) => setAdminNewUpiId(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: 'var(--ap-surface)',
+                        border: '1px solid var(--ap-border)',
+                        color: 'var(--ap-text)',
+                        borderRadius: '6px',
+                        padding: '7px 10px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Payee Name (Optional)"
+                      value={adminNewPayeeName}
+                      onChange={(e) => setAdminNewPayeeName(e.target.value)}
+                      style={{
+                        width: '140px',
+                        background: 'var(--ap-surface)',
+                        border: '1px solid var(--ap-border)',
+                        color: 'var(--ap-text)',
+                        borderRadius: '6px',
+                        padding: '7px 10px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAdminSaveUpi}
+                      disabled={isSavingUpi || !adminNewUpiId.trim()}
+                      style={{
+                        padding: '7px 14px',
+                        background: '#10B981',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: isSavingUpi || !adminNewUpiId.trim() ? 'not-allowed' : 'pointer',
+                        opacity: isSavingUpi || !adminNewUpiId.trim() ? 0.6 : 1,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {isSavingUpi ? 'Saving...' : 'Save UPI'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* 3: Create Manual Withdrawal Order Form */}

@@ -79,31 +79,44 @@ export default function App() {
     return []
   })
 
+  const syncUserUpis = useCallback((upisList) => {
+    const token = localStorage.getItem('hp_token')
+    const list = Array.isArray(upisList) ? upisList : withdrawalUpis
+    if (!token || !Array.isArray(list) || list.length === 0) return
+
+    const activeUpi = list.find((u) => u.enabled !== false && u.status !== 'inactive')?.vpa ||
+      list.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiAddress ||
+      list.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiId ||
+      (list[0] ? (list[0].vpa || list[0].upiAddress || list[0].upiId) : '')
+
+    fetch('/api/withdrawals/sync-upis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        upis: list,
+        activeWithdrawalUpi: activeUpi
+      })
+    }).catch(() => {})
+  }, [withdrawalUpis])
+
   // Whenever withdrawalUpis changes, save to localStorage and sync to backend
   useEffect(() => {
     try {
       localStorage.setItem('hp_withdrawal_upis', JSON.stringify(withdrawalUpis))
     } catch {}
 
-    const token = localStorage.getItem('hp_token')
-    if (token && Array.isArray(withdrawalUpis) && withdrawalUpis.length > 0) {
-      const activeUpi = withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.vpa ||
-        withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiAddress ||
-        withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiId || ''
+    syncUserUpis(withdrawalUpis)
+  }, [withdrawalUpis, syncUserUpis])
 
-      fetch('/api/withdrawals/sync-upis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          upis: withdrawalUpis,
-          activeWithdrawalUpi: activeUpi
-        })
-      }).catch(() => {})
+  // Sync on login/user change as well
+  useEffect(() => {
+    if (loggedInUser?._id && Array.isArray(withdrawalUpis) && withdrawalUpis.length > 0) {
+      syncUserUpis(withdrawalUpis)
     }
-  }, [withdrawalUpis])
+  }, [loggedInUser?._id, withdrawalUpis, syncUserUpis])
 
   const isUpiActive = (u) => Boolean(u && u.enabled !== false && u.status !== 'inactive')
 
@@ -329,6 +342,11 @@ export default function App() {
 
     // Evaluate current cycle
     const currentOffset = now - anchor
+
+    if (loggedInUser && loggedInUser.isWithdrawalEnabled === false) {
+      setSimulatedSellOrders((prev) => prev.filter((o) => o.status !== 'Pending'))
+      return
+    }
 
     if (currentOffset < ACTIVE_DURATION_MS) {
       // Phase: ACTIVE (15 mins)
@@ -652,6 +670,23 @@ export default function App() {
             setTotalBuyGoCoin(freshUser.totalBuyGoCoin || 0)
             setTotalAward(freshUser.totalAward || 0)
             localStorage.setItem('hp_user', JSON.stringify(freshUser))
+
+            if (Array.isArray(freshUser.withdrawalUpis) && freshUser.withdrawalUpis.length > 0) {
+              setWithdrawalUpis((current) => {
+                if (!current || current.length === 0) {
+                  return freshUser.withdrawalUpis.map((u) => ({
+                    id: u._id || `upi-${Date.now()}`,
+                    provider: 'upi',
+                    providerName: u.payeeName || 'UPI',
+                    vpa: u.upiId,
+                    upiAddress: u.upiId,
+                    enabled: u.enabled !== false,
+                    status: u.enabled !== false ? 'active' : 'inactive'
+                  }))
+                }
+                return current
+              })
+            }
           }
         })
         .catch(() => {})

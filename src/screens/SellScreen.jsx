@@ -52,12 +52,6 @@ export default function SellScreen({
   useLockScroll(Boolean(selectedVideo) || isWithdrawalDetailsOpen)
 
   const handleManageSellClick = () => {
-    if (user && user.isWithdrawalEnabled === false) {
-      if (onShowToast) {
-        onShowToast('⚠️ Aapke account ka withdrawal admin dvaara temporarily band kiya gaya hai. Support se sampark karein.')
-      }
-      return
-    }
     if (balance < 300) {
       if (onShowToast) {
         onShowToast(`⚠️ Minimum withdrawal amount is ₹300. Aapka current balance ₹${Number(balance).toFixed(2)} hai.`)
@@ -200,17 +194,7 @@ export default function SellScreen({
           </div>
         </div>
 
-        {user && user.isWithdrawalEnabled === false ? (
-          <div
-            className="sell-progress-status"
-            style={{ background: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.35)', color: '#EF4444', cursor: 'pointer' }}
-            onClick={() => onShowToast && onShowToast('⚠️ Aapke account ka withdrawal admin dvaara band kiya gaya hai.')}
-            title="Withdrawal is paused by admin"
-          >
-            <AlertCircle size={14} strokeWidth={2.4} />
-            <span>Withdrawal Paused by Admin (Band Hai)</span>
-          </div>
-        ) : hasWithdrawalInProgress ? (
+        {hasWithdrawalInProgress ? (
           <div
             className="sell-progress-status"
             onClick={() => setIsWithdrawalDetailsOpen(true)}
@@ -259,21 +243,6 @@ export default function SellScreen({
           <span>Manage Sell HeroPay</span>
         </button>
       </div>
-
-      {/* Admin Withdrawal Paused Notice Banner */}
-      {user && user.isWithdrawalEnabled === false && (
-        <div className="sell-warning-notice" style={{ background: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.35)' }}>
-          <div className="sell-warning-icon-wrap" style={{ background: '#EF4444' }}>
-            <AlertCircle size={20} color="#fff" strokeWidth={2.4} />
-          </div>
-          <div className="sell-warning-content">
-            <h4 className="sell-warning-title" style={{ color: '#EF4444' }}>Withdrawal Suspended (Band Hai)</h4>
-            <p className="sell-warning-desc" style={{ color: '#F87171' }}>
-              Admin dwaara aapke account ka withdrawal feature temporarily pause (band) kiya gaya hai. Kripya 24/7 VIP Support se sampark karein.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Minimum Balance Warning Banner */}
       {balance < 300 && (

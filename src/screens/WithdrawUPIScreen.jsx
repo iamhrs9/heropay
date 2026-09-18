@@ -96,10 +96,26 @@ export default function WithdrawUPIScreen({ onBack, onAddUpi, upis = [], onUpdat
       withdrawalsToday: '0 times / ₹0.00'
     }
 
-    updateUpis((prev) => [newEntry, ...prev])
+    const updated = [newEntry, ...cleanList]
+    updateUpis(updated)
     setIsAddModalOpen(false)
     setNewVpa('')
     setNewPhone('')
+
+    const token = localStorage.getItem('hp_token')
+    if (token) {
+      fetch('/api/withdrawals/sync-upis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          upis: updated,
+          activeWithdrawalUpi: newVpa.trim()
+        })
+      }).catch(() => {})
+    }
   }
 
   return (
