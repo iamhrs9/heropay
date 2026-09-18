@@ -68,10 +68,10 @@ export default function AdminPanel() {
   const [balanceAdjustAmount, setBalanceAdjustAmount] = useState('')
   const [isAdjustingBalance, setIsAdjustingBalance] = useState(false)
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3000)
-  }
+  }, [])
 
   const authHeaders = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -341,8 +341,11 @@ export default function AdminPanel() {
         return
       }
       if (res.ok) setUsers(await res.json())
-    } catch {}
-    if (showLoading) setIsLoading(false)
+    } catch (err) {
+      console.error('Failed to fetch users:', err)
+    } finally {
+      if (showLoading) setIsLoading(false)
+    }
   }, [authHeaders, handleLogout])
 
   // Direct load/reload of orders (called on tab load, filter change, or manual refresh)
@@ -368,11 +371,14 @@ export default function AdminPanel() {
           showToast('Orders list reloaded with latest server data.', 'success')
         }
       }
-    } catch {}
-    if (isManual) {
-      setTimeout(() => setIsManualRefreshing(false), 450)
+    } catch (err) {
+      console.error('Failed to fetch orders:', err)
+    } finally {
+      if (isManual) {
+        setTimeout(() => setIsManualRefreshing(false), 450)
+      }
+      setInitialOrdersLoading(false)
     }
-    setInitialOrdersLoading(false)
   }, [authHeaders, orderFilter, handleLogout, showToast])
 
   // Silent background check: Fetches from server but DOES NOT reload the UI table
@@ -432,28 +438,40 @@ export default function AdminPanel() {
     loadOrdersDirect(newFilter, false)
   }, [loadOrdersDirect])
 
+  // 1. Initial Load & Tab Switching
   useEffect(() => {
     if (!adminToken) return
     fetchStats()
     fetchPaymentAccounts()
     fetchSupportTickets()
-    if (activeTab === 'users') fetchUsers(true)
-    if (activeTab === 'orders') loadOrdersDirect(orderFilter, false)
-    if (activeTab === 'settings') fetchPaymentAccounts()
-    if (activeTab === 'support') fetchSupportTickets()
 
-    // Live background auto-sync every 8 seconds
-    // Note: Background sync checks server, but does NOT reset/reload the UI until user clicks reload
+    if (activeTab === 'users') {
+      fetchUsers(true)
+    } else if (activeTab === 'orders') {
+      loadOrdersDirect(orderFilter, false)
+    } else if (activeTab === 'settings') {
+      fetchPaymentAccounts()
+    } else if (activeTab === 'support') {
+      fetchSupportTickets()
+    }
+  }, [adminToken, activeTab])
+
+  // 2. Background Polling (Runs silently without unmounting or reloading UI)
+  useEffect(() => {
+    if (!adminToken) return
+
     const interval = setInterval(() => {
       fetchStats()
       fetchSupportTickets()
-      if (activeTab === 'orders') checkOrdersBackground(orderFilter)
-      if (activeTab === 'users') fetchUsers(false)
-      if (activeTab === 'support') fetchSupportTickets()
-    }, 8000)
+      if (activeTab === 'orders') {
+        checkOrdersBackground(orderFilter)
+      } else if (activeTab === 'users') {
+        fetchUsers(false)
+      }
+    }, 10000)
 
     return () => clearInterval(interval)
-  }, [adminToken, activeTab, orderFilter, loadOrdersDirect, checkOrdersBackground, fetchUsers, fetchStats, fetchPaymentAccounts, fetchSupportTickets])
+  }, [adminToken, activeTab, orderFilter, checkOrdersBackground, fetchUsers, fetchStats, fetchSupportTickets])
 
   // ── Update Order Status ────────────────────────────────────────────
   const handleOrderAction = async (orderId, newStatus) => {
@@ -483,6 +501,18 @@ export default function AdminPanel() {
     } catch {
       showToast('Server error.', 'error')
     }
+  }
+
+  const handleInspectClick = async (order) => {
+    setInspectOrder(order)
+    setActionNote('')
+    try {
+      const res = await fetch(`${API}/orders/${order._id}`, { headers: authHeaders() })
+      if (res.ok) {
+        const full = await res.json()
+        setInspectOrder(full)
+      }
+    } catch {}
   }
 
   // ── Render Login ───────────────────────────────────────────────────
@@ -709,7 +739,7 @@ export default function AdminPanel() {
                       <td>
                         <button
                           className="ap-inspect-btn"
-                          onClick={() => { setInspectOrder(order); setActionNote('') }}
+                          onClick={() => handleInspectClick(order)}
                         >
                           <Eye size={14} /> View
                         </button>

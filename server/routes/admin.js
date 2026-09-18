@@ -74,15 +74,30 @@ router.get('/users', protect, adminOnly, async (req, res) => {
   }
 })
 
-// GET /api/admin/orders  — All orders with user info (for payment management)
+// GET /api/admin/orders  — All orders with user info (excludes large screenshotUrl for lightning speed)
 router.get('/orders', protect, adminOnly, async (req, res) => {
   try {
     const { status } = req.query
     const filter = status ? { status } : {}
     const orders = await Order.find(filter)
+      .select('-screenshotUrl')
       .populate('userId', 'fullName phone email balance')
       .sort({ createdAt: -1 })
+      .lean()
     res.json(orders)
+  } catch (err) {
+    res.status(500).json({ message: 'Server error.' })
+  }
+})
+
+// GET /api/admin/orders/:id  — Full single order details including screenshotUrl (for Inspect modal)
+router.get('/orders/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('userId', 'fullName phone email balance')
+      .lean()
+    if (!order) return res.status(404).json({ message: 'Order not found.' })
+    res.json(order)
   } catch (err) {
     res.status(500).json({ message: 'Server error.' })
   }
