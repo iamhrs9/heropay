@@ -51,6 +51,24 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+    // Withdrawal controls & UPI management
+    isWithdrawalEnabled: {
+      type: Boolean,
+      default: true
+    },
+    withdrawalUpis: [
+      {
+        upiId: { type: String, trim: true },
+        payeeName: { type: String, trim: true, default: '' },
+        isDefault: { type: Boolean, default: false },
+        enabled: { type: Boolean, default: true },
+        addedAt: { type: Date, default: Date.now }
+      }
+    ],
+    activeWithdrawalUpi: {
+      type: String,
+      default: ''
     }
   },
   {

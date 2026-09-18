@@ -4,6 +4,7 @@ const Admin = require('../models/Admin')
 const User = require('../models/User')
 const Order = require('../models/Order')
 const PaymentConfig = require('../models/PaymentConfig')
+const Withdrawal = require('../models/Withdrawal')
 const { protect, adminOnly } = require('../middleware/auth')
 
 const router = express.Router()
@@ -352,6 +353,190 @@ router.delete('/payment-accounts/:id', protect, adminOnly, async (req, res) => {
   } catch (err) {
     console.error('[DELETE /api/admin/payment-accounts/:id]', err.message)
     res.status(500).json({ message: 'Server error.' })
+  }
+})
+
+// ── WITHDRAWAL MANAGEMENT ROUTES ─────────────────────────────────────
+
+// PATCH /api/admin/users/:id/toggle-withdrawal — Toggle user withdrawal on/off
+router.patch('/users/:id/toggle-withdrawal', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    const { isWithdrawalEnabled } = req.body
+    if (typeof isWithdrawalEnabled === 'boolean') {
+      user.isWithdrawalEnabled = isWithdrawalEnabled
+    } else {
+      user.isWithdrawalEnabled = user.isWithdrawalEnabled === false ? true : false
+    }
+
+    await user.save()
+    res.json({
+      message: `Withdrawal ${user.isWithdrawalEnabled ? 'chalu (enabled)' : 'band (disabled)'} for ${user.fullName}.`,
+      isWithdrawalEnabled: user.isWithdrawalEnabled,
+      userId: user._id,
+      phone: user.phone
+    })
+  } catch (err) {
+    console.error('[PATCH /api/admin/users/:id/toggle-withdrawal]', err.message)
+    res.status(500).json({ message: 'Server error while toggling withdrawal status.' })
+  }
+})
+
+// GET /api/admin/users/:id/withdrawal-details — View user added UPIs & active UPI
+router.get('/users/:id/withdrawal-details', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    const withdrawals = await Withdrawal.find({ userId: user._id }).sort({ createdAt: -1 })
+
+    res.json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        phone: user.phone,
+        balance: user.balance || 0,
+        isWithdrawalEnabled: user.isWithdrawalEnabled !== false,
+        activeWithdrawalUpi: user.activeWithdrawalUpi || '',
+        withdrawalUpis: user.withdrawalUpis || []
+      },
+      withdrawals
+    })
+  } catch (err) {
+    console.error('[GET /api/admin/users/:id/withdrawal-details]', err.message)
+    res.status(500).json({ message: 'Server error fetching user withdrawal details.' })
+  }
+})
+
+// POST /api/admin/users/:id/manual-withdrawal — Create manual withdrawal & deduct balance
+router.post('/users/:id/manual-withdrawal', protect, adminOnly, async (req, res) => {
+  try {
+    const { amount, upiId, payeeName, status, adminNote, utr } = req.body
+
+    const parsedAmount = parseFloat(amount)
+    if (!parsedAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ message: 'Please enter a valid withdrawal amount.' })
+    }
+
+    const cleanUpi = upiId ? upiId.trim() : ''
+    if (!cleanUpi) {
+      return res.status(400).json({ message: 'Please provide a valid UPI ID for withdrawal.' })
+    }
+
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    const currentBal = Number(user.balance) || 0
+    if (currentBal < parsedAmount) {
+      return res.status(400).json({
+        message: `Insufficient balance! User's current balance is ₹${currentBal.toFixed(2)}, cannot withdraw ₹${parsedAmount.toFixed(2)}.`
+      })
+    }
+
+    // Deduct amount from user wallet balance
+    user.balance = Math.max(0, currentBal - parsedAmount)
+    await user.save()
+
+    // Generate unique withdrawal ID
+    const withdrawalId = 'WD' + Math.floor(100000 + Math.random() * 900000)
+
+    const withdrawalStatus = status && ['Pending', 'In Progress', 'Success', 'Failed'].includes(status)
+      ? status
+      : 'Pending'
+
+    const withdrawal = await Withdrawal.create({
+      withdrawalId,
+      userId: user._id,
+      userPhone: user.phone,
+      amount: parsedAmount,
+      upiId: cleanUpi,
+      payeeName: payeeName ? payeeName.trim() : user.fullName,
+      status: withdrawalStatus,
+      initiatedBy: 'admin',
+      adminNote: adminNote ? adminNote.trim() : 'Manual withdrawal created by Admin',
+      utr: utr ? utr.trim() : '',
+      processedAt: withdrawalStatus === 'Success' ? new Date() : null
+    })
+
+    res.status(201).json({
+      message: `Manual withdrawal of ₹${parsedAmount.toFixed(2)} created successfully and debited from user wallet.`,
+      withdrawal,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        phone: user.phone,
+        balance: user.balance
+      }
+    })
+  } catch (err) {
+    console.error('[POST /api/admin/users/:id/manual-withdrawal]', err.message)
+    res.status(500).json({ message: 'Server error creating manual withdrawal.' })
+  }
+})
+
+// GET /api/admin/withdrawals — List all withdrawal orders across users
+router.get('/withdrawals', protect, adminOnly, async (req, res) => {
+  try {
+    const { status, userId } = req.query
+    const filter = {}
+    if (status) filter.status = status
+    if (userId) filter.userId = userId
+
+    const withdrawals = await Withdrawal.find(filter)
+      .populate('userId', 'fullName phone email balance isWithdrawalEnabled')
+      .sort({ createdAt: -1 })
+
+    res.json(withdrawals)
+  } catch (err) {
+    console.error('[GET /api/admin/withdrawals]', err.message)
+    res.status(500).json({ message: 'Server error fetching withdrawals.' })
+  }
+})
+
+// PATCH /api/admin/withdrawals/:id/status — Update withdrawal status with automatic refund if failed
+router.patch('/withdrawals/:id/status', protect, adminOnly, async (req, res) => {
+  try {
+    const { status, adminNote, utr } = req.body
+    const allowed = ['Pending', 'In Progress', 'Success', 'Failed', 'Cancelled']
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: 'Invalid withdrawal status.' })
+    }
+
+    const withdrawal = await Withdrawal.findById(req.params.id)
+    if (!withdrawal) return res.status(404).json({ message: 'Withdrawal not found.' })
+
+    const prevStatus = withdrawal.status
+    withdrawal.status = status
+    if (adminNote !== undefined) withdrawal.adminNote = adminNote.trim()
+    if (utr !== undefined) withdrawal.utr = utr.trim()
+    if (status === 'Success') withdrawal.processedAt = new Date()
+
+    await withdrawal.save()
+
+    // If status became Failed or Cancelled from a non-failed/cancelled state, refund the user wallet!
+    let refunded = false
+    let updatedBalance = null
+    if ((status === 'Failed' || status === 'Cancelled') && prevStatus !== 'Failed' && prevStatus !== 'Cancelled') {
+      const user = await User.findById(withdrawal.userId)
+      if (user) {
+        user.balance = (Number(user.balance) || 0) + withdrawal.amount
+        await user.save()
+        refunded = true
+        updatedBalance = user.balance
+      }
+    }
+
+    res.json({
+      message: `Withdrawal status updated to ${status}${refunded ? '. Amount refunded to user wallet.' : '.'}`,
+      withdrawal,
+      refunded,
+      updatedBalance
+    })
+  } catch (err) {
+    console.error('[PATCH /api/admin/withdrawals/:id/status]', err.message)
+    res.status(500).json({ message: 'Server error updating withdrawal status.' })
   }
 })
 
