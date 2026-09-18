@@ -39,17 +39,21 @@ router.get('/status', protect, async (req, res) => {
 // User syncs their added UPI IDs to their MongoDB profile
 router.post('/sync-upis', protect, async (req, res) => {
   try {
-    const { upis, activeWithdrawalUpi } = req.body
+    const upis = req.body.upis || req.body.withdrawalUpis
+    const activeWithdrawalUpi = req.body.activeWithdrawalUpi
 
     const updateFields = {}
     if (Array.isArray(upis)) {
-      updateFields.withdrawalUpis = upis.map((u) => ({
-        upiId: (u.upiId || u.id || '').trim(),
-        payeeName: (u.payeeName || u.name || '').trim(),
-        isDefault: Boolean(u.isDefault),
-        enabled: u.enabled !== false,
-        addedAt: u.addedAt || new Date()
-      })).filter((u) => u.upiId)
+      updateFields.withdrawalUpis = upis.map((u) => {
+        const address = (u.upiAddress || u.vpa || u.upiId || (u.id && !String(u.id).startsWith('upi-') ? u.id : '') || '').trim()
+        return {
+          upiId: address,
+          payeeName: (u.payeeName || u.name || u.providerName || '').trim(),
+          isDefault: Boolean(u.isDefault),
+          enabled: u.enabled !== false && u.status !== 'inactive',
+          addedAt: u.addedAt || new Date()
+        }
+      }).filter((u) => u.upiId)
     }
 
     if (typeof activeWithdrawalUpi === 'string') {

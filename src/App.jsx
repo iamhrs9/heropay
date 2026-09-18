@@ -79,11 +79,30 @@ export default function App() {
     return []
   })
 
-  // Whenever withdrawalUpis changes, save to localStorage
+  // Whenever withdrawalUpis changes, save to localStorage and sync to backend
   useEffect(() => {
     try {
       localStorage.setItem('hp_withdrawal_upis', JSON.stringify(withdrawalUpis))
     } catch {}
+
+    const token = localStorage.getItem('hp_token')
+    if (token && Array.isArray(withdrawalUpis) && withdrawalUpis.length > 0) {
+      const activeUpi = withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.vpa ||
+        withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiAddress ||
+        withdrawalUpis.find((u) => u.enabled !== false && u.status !== 'inactive')?.upiId || ''
+
+      fetch('/api/withdrawals/sync-upis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          upis: withdrawalUpis,
+          activeWithdrawalUpi: activeUpi
+        })
+      }).catch(() => {})
+    }
   }, [withdrawalUpis])
 
   const isUpiActive = (u) => Boolean(u && u.enabled !== false && u.status !== 'inactive')
@@ -496,69 +515,104 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 2800)
   }
 
-  // ── Fetch User Orders from MongoDB ──────────────────────────────
+  // ── Fetch User Orders & Withdrawals from MongoDB ──────────────────────────────
   const loadUserOrders = useCallback(async (token) => {
     if (!token) return
     try {
-      const res = await fetch('/api/orders', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (!res.ok) return
-      const orders = await res.json()
-      if (Array.isArray(orders)) {
-        const recordsList = []
-        orders.forEach((o) => {
-          const autoApproveMs = o.autoApproveAt ? new Date(o.autoApproveAt).getTime() : null
-          const timeStr = new Date(o.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-          const dateStr = new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+      const [ordersRes, withdrawalsRes] = await Promise.allSettled([
+        fetch('/api/orders', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/withdrawals/my', { headers: { Authorization: `Bearer ${token}` } })
+      ])
 
-          const mainEntry = {
-            id: o.txId,
-            txId: o.txId,
-            _id: o._id,
-            type: 'buy',
-            title: `Buy Package (${o.packageRange})`,
-            amount: `+${o.assignedAmount.toFixed(2)}`,
-            coins: o.assignedAmount.toFixed(2),
-            commissionAmount: o.commission,
-            totalCoins: o.totalCoins,
-            status: o.status,
-            date: `${dateStr}, ${timeStr}`,
-            method: o.proofSubmitted ? (o.utr ? `UTR: ${o.utr}` : 'Proof Submitted') : 'Payment Incomplete (Click to Pay)',
-            utr: o.utr,
-            screenshot: o.screenshotUrl,
-            proofSubmitted: Boolean(o.proofSubmitted),
-            pkg: { range: o.packageRange },
-            packageRange: o.packageRange,
-            assignedAmount: o.assignedAmount,
-            commission: o.commission,
-            autoApproveAt: autoApproveMs,
-            paymentAccount: o.paymentAccount,
-            createdAt: new Date(o.createdAt).getTime()
-          }
-          recordsList.push(mainEntry)
+      const recordsList = []
 
-          // If order is approved (Success), also generate the separate Commission entry
-          if (o.status === 'Success' && o.commission > 0) {
-            recordsList.push({
-              id: `${o.txId}_COMM`,
-              txId: `${o.txId}_COMM`,
+      // 1. Process Buy Orders
+      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+        const orders = await ordersRes.value.json()
+        if (Array.isArray(orders)) {
+          orders.forEach((o) => {
+            const autoApproveMs = o.autoApproveAt ? new Date(o.autoApproveAt).getTime() : null
+            const timeStr = new Date(o.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            const dateStr = new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+
+            const mainEntry = {
+              id: o.txId,
+              txId: o.txId,
+              _id: o._id,
               type: 'buy',
-              title: `Buy Commission (${commissionLabel})`,
-              amount: `+${Number(o.commission).toFixed(2)}`,
-              coins: Number(o.commission).toFixed(2),
+              title: `Buy Package (${o.packageRange})`,
+              amount: `+${o.assignedAmount.toFixed(2)}`,
+              coins: o.assignedAmount.toFixed(2),
               commissionAmount: o.commission,
-              totalCoins: o.commission,
-              status: 'Success',
+              totalCoins: o.totalCoins,
+              status: o.status,
               date: `${dateStr}, ${timeStr}`,
-              method: 'System Yield Credited',
-              createdAt: new Date(o.createdAt).getTime() + 1
-            })
-          }
-        })
-        setTransactionRecords(recordsList)
-        setPendingOrdersList(recordsList.filter((m) => m.status === 'Pending'))
+              method: o.proofSubmitted ? (o.utr ? `UTR: ${o.utr}` : 'Proof Submitted') : 'Payment Incomplete (Click to Pay)',
+              utr: o.utr,
+              screenshot: o.screenshotUrl,
+              proofSubmitted: Boolean(o.proofSubmitted),
+              pkg: { range: o.packageRange },
+              packageRange: o.packageRange,
+              assignedAmount: o.assignedAmount,
+              commission: o.commission,
+              autoApproveAt: autoApproveMs,
+              paymentAccount: o.paymentAccount,
+              createdAt: new Date(o.createdAt).getTime()
+            }
+            recordsList.push(mainEntry)
+
+            // If order is approved (Success), also generate the separate Commission entry
+            if (o.status === 'Success' && o.commission > 0) {
+              recordsList.push({
+                id: `${o.txId}_COMM`,
+                txId: `${o.txId}_COMM`,
+                type: 'buy',
+                title: `Buy Commission (${commissionLabel})`,
+                amount: `+${Number(o.commission).toFixed(2)}`,
+                coins: Number(o.commission).toFixed(2),
+                commissionAmount: o.commission,
+                totalCoins: o.commission,
+                status: 'Success',
+                date: `${dateStr}, ${timeStr}`,
+                method: 'System Yield Credited',
+                createdAt: new Date(o.createdAt).getTime() + 1
+              })
+            }
+          })
+        }
       }
+
+      // 2. Process Withdrawal Orders (created by admin or requested by user)
+      if (withdrawalsRes.status === 'fulfilled' && withdrawalsRes.value.ok) {
+        const withdrawals = await withdrawalsRes.value.json()
+        if (Array.isArray(withdrawals)) {
+          withdrawals.forEach((w) => {
+            const timeStr = new Date(w.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            const dateStr = new Date(w.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+            const mappedStatus = (w.status === 'In Progress' || w.status === 'Pending') ? 'Pending' : (w.status === 'Success' ? 'Success' : 'Failed')
+
+            recordsList.push({
+              id: w.withdrawalId,
+              txId: w.withdrawalId,
+              _id: w._id,
+              type: 'sell',
+              title: `Withdrawal (${w.upiId || 'UPI'})`,
+              amount: `-${Number(w.amount).toFixed(2)}`,
+              coins: Number(w.amount).toFixed(2),
+              status: mappedStatus,
+              rawStatus: w.status,
+              date: `${dateStr}, ${timeStr}`,
+              method: w.utr ? `UTR: ${w.utr}` : (w.upiId ? `UPI: ${w.upiId}` : 'Instant UPI Payout'),
+              actionNote: w.adminNote || (w.status === 'Failed' ? 'Withdrawal Failed / Cancelled' : ''),
+              createdAt: new Date(w.createdAt).getTime()
+            })
+          })
+        }
+      }
+
+      recordsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      setTransactionRecords(recordsList)
+      setPendingOrdersList(recordsList.filter((m) => m.type === 'buy' && m.status === 'Pending'))
     } catch {}
   }, [])
 

@@ -76,7 +76,10 @@ router.post('/register', async (req, res) => {
         referralCode: user.referralCode,
         balance: user.balance,
         totalBuyGoCoin: user.totalBuyGoCoin,
-        totalAward: user.totalAward
+        totalAward: user.totalAward,
+        isWithdrawalEnabled: user.isWithdrawalEnabled !== false,
+        withdrawalUpis: user.withdrawalUpis || [],
+        activeWithdrawalUpi: user.activeWithdrawalUpi || ''
       }
     })
   } catch (err) {
@@ -125,7 +128,10 @@ router.post('/login', async (req, res) => {
         referralCode: user.referralCode,
         balance: user.balance,
         totalBuyGoCoin: user.totalBuyGoCoin,
-        totalAward: user.totalAward
+        totalAward: user.totalAward,
+        isWithdrawalEnabled: user.isWithdrawalEnabled !== false,
+        withdrawalUpis: user.withdrawalUpis || [],
+        activeWithdrawalUpi: user.activeWithdrawalUpi || ''
       }
     })
   } catch (err) {
@@ -155,7 +161,10 @@ router.get('/me', protect, async (req, res) => {
       referralCode: user.referralCode,
       balance: user.balance,
       totalBuyGoCoin: user.totalBuyGoCoin,
-      totalAward: user.totalAward
+      totalAward: user.totalAward,
+      isWithdrawalEnabled: user.isWithdrawalEnabled !== false,
+      withdrawalUpis: user.withdrawalUpis || [],
+      activeWithdrawalUpi: user.activeWithdrawalUpi || ''
     })
   } catch (err) {
     res.status(500).json({ message: 'Server error.' })

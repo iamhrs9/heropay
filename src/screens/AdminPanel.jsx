@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   ShieldCheck, LogIn, LogOut, Users, ShoppingBag, Clock, CheckCircle2,
   XCircle, PauseCircle, RefreshCw, Coins, Eye, X, Settings, Save, Building2, Smartphone,
-  Plus, Edit2, Trash2, Power, AlertTriangle, Check, Shuffle, Headphones, MessageSquare, Send
+  Plus, Edit2, Trash2, Power, AlertTriangle, Check, Shuffle, Headphones, MessageSquare, Send,
+  CreditCard, Wallet
 } from 'lucide-react'
 import './AdminPanel.css'
 
@@ -67,6 +68,20 @@ export default function AdminPanel() {
   const [balanceAdjustType, setBalanceAdjustType] = useState('add') // 'add' | 'deduct'
   const [balanceAdjustAmount, setBalanceAdjustAmount] = useState('')
   const [isAdjustingBalance, setIsAdjustingBalance] = useState(false)
+
+  // User Withdrawal & UPI Modal State
+  const [withdrawalModalUser, setWithdrawalModalUser] = useState(null)
+  const [userWithdrawalDetails, setUserWithdrawalDetails] = useState(null)
+  const [isLoadingWithdrawalDetails, setIsLoadingWithdrawalDetails] = useState(false)
+  const [manualWithdrawalForm, setManualWithdrawalForm] = useState({
+    amount: '',
+    upiId: '',
+    payeeName: '',
+    status: 'Pending',
+    adminNote: '',
+    utr: ''
+  })
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false)
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
@@ -515,6 +530,145 @@ export default function AdminPanel() {
     } catch {}
   }
 
+  // ── Withdrawal & User UPI Management ──────────────────────────────
+  const handleToggleWithdrawal = async (user) => {
+    try {
+      const res = await fetch(`${API}/users/${user._id}/toggle-withdrawal`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ isWithdrawalEnabled: !user.isWithdrawalEnabled })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.message || 'Failed to toggle withdrawal.', 'error')
+        return
+      }
+      showToast(data.message, 'success')
+      setUsers(prev => prev.map(u => u._id === user._id ? { ...u, isWithdrawalEnabled: data.isWithdrawalEnabled } : u))
+      if (withdrawalModalUser && withdrawalModalUser._id === user._id) {
+        setWithdrawalModalUser(prev => ({ ...prev, isWithdrawalEnabled: data.isWithdrawalEnabled }))
+        setUserWithdrawalDetails(prev => prev ? {
+          ...prev,
+          user: { ...prev.user, isWithdrawalEnabled: data.isWithdrawalEnabled }
+        } : null)
+      }
+    } catch {
+      showToast('Server error toggling withdrawal status.', 'error')
+    }
+  }
+
+  const handleOpenWithdrawalModal = async (user) => {
+    setWithdrawalModalUser(user)
+    setUserWithdrawalDetails(null)
+    setIsLoadingWithdrawalDetails(true)
+    setManualWithdrawalForm({
+      amount: '',
+      upiId: user.activeWithdrawalUpi || (user.withdrawalUpis?.[0]?.upiId || ''),
+      payeeName: user.fullName || '',
+      status: 'Pending',
+      adminNote: '',
+      utr: ''
+    })
+    try {
+      const res = await fetch(`${API}/users/${user._id}/withdrawal-details`, { headers: authHeaders() })
+      if (res.ok) {
+        const data = await res.json()
+        setUserWithdrawalDetails(data)
+        if (data.user?.withdrawalUpis?.length > 0) {
+          setManualWithdrawalForm(f => ({
+            ...f,
+            upiId: f.upiId || data.user.activeWithdrawalUpi || data.user.withdrawalUpis[0].upiId
+          }))
+        }
+      }
+    } catch {
+      showToast('Failed to load user withdrawal details.', 'error')
+    } finally {
+      setIsLoadingWithdrawalDetails(false)
+    }
+  }
+
+  const handleCreateManualWithdrawal = async (e) => {
+    e?.preventDefault()
+    if (!withdrawalModalUser) return
+    const amt = parseFloat(manualWithdrawalForm.amount)
+    if (!amt || isNaN(amt) || amt <= 0) {
+      showToast('Please enter a valid withdrawal amount.', 'error')
+      return
+    }
+    if (!manualWithdrawalForm.upiId?.trim()) {
+      showToast('Please specify a UPI ID.', 'error')
+      return
+    }
+    if (amt > (withdrawalModalUser.balance || 0)) {
+      showToast(`User only has ₹${(withdrawalModalUser.balance || 0).toFixed(2)} balance. Cannot withdraw ₹${amt}.`, 'error')
+      return
+    }
+
+    setIsSubmittingWithdrawal(true)
+    try {
+      const res = await fetch(`${API}/users/${withdrawalModalUser._id}/manual-withdrawal`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(manualWithdrawalForm)
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.message || 'Failed to create withdrawal.', 'error')
+        return
+      }
+      showToast(data.message, 'success')
+      // Update balance in user list and modal
+      setUsers(prev => prev.map(u => u._id === withdrawalModalUser._id ? { ...u, balance: data.user.balance } : u))
+      setWithdrawalModalUser(prev => ({ ...prev, balance: data.user.balance }))
+      if (userWithdrawalDetails) {
+        setUserWithdrawalDetails(prev => ({
+          ...prev,
+          user: { ...prev.user, balance: data.user.balance },
+          withdrawals: [data.withdrawal, ...(prev.withdrawals || [])]
+        }))
+      }
+      setManualWithdrawalForm(f => ({ ...f, amount: '', adminNote: '', utr: '' }))
+      fetchStats()
+    } catch {
+      showToast('Server error creating withdrawal.', 'error')
+    } finally {
+      setIsSubmittingWithdrawal(false)
+    }
+  }
+
+  const handleUpdateWithdrawalStatus = async (withdrawalId, newStatus) => {
+    try {
+      const res = await fetch(`${API}/withdrawals/${withdrawalId}/status`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ status: newStatus })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.message || 'Failed to update withdrawal.', 'error')
+        return
+      }
+      showToast(data.message, 'success')
+      if (userWithdrawalDetails) {
+        setUserWithdrawalDetails(prev => ({
+          ...prev,
+          withdrawals: prev.withdrawals.map(w => w._id === withdrawalId ? data.withdrawal : w),
+          ...(data.refunded && data.updatedBalance !== null ? {
+            user: { ...prev.user, balance: data.updatedBalance }
+          } : {})
+        }))
+        if (data.refunded && data.updatedBalance !== null && withdrawalModalUser) {
+          setWithdrawalModalUser(prev => ({ ...prev, balance: data.updatedBalance }))
+          setUsers(prev => prev.map(u => u._id === withdrawalModalUser._id ? { ...u, balance: data.updatedBalance } : u))
+        }
+      }
+      fetchStats()
+    } catch {
+      showToast('Server error updating withdrawal.', 'error')
+    }
+  }
+
   // ── Render Login ───────────────────────────────────────────────────
   if (!adminToken) {
     return (
@@ -775,9 +929,8 @@ export default function AdminPanel() {
                     <th>#</th>
                     <th>Name</th>
                     <th>Phone</th>
-                    <th>Email</th>
                     <th>Coin Balance</th>
-                    <th>Total Bought</th>
+                    <th>Withdrawal Status</th>
                     <th>Joined</th>
                     <th>Action</th>
                   </tr>
@@ -789,29 +942,59 @@ export default function AdminPanel() {
                       <td>
                         <div className="ap-user-cell">
                           <div className="ap-user-avatar">{(user.fullName || 'U')[0].toUpperCase()}</div>
-                          <span className="ap-user-name">{user.fullName}</span>
+                          <div>
+                            <span className="ap-user-name">{user.fullName}</span>
+                            {user.email && <div style={{ fontSize: 11, color: 'var(--ap-text-dim)' }}>{user.email}</div>}
+                          </div>
                         </div>
                       </td>
                       <td>{user.phone}</td>
-                      <td>{user.email || '—'}</td>
                       <td>
                         <span className="ap-coin-val">⭐ {user.balance?.toFixed(2)}</span>
                       </td>
-                      <td>⭐ {user.totalBuyGoCoin?.toFixed(2)}</td>
-                      <td>{new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</td>
                       <td>
                         <button
                           type="button"
-                          className="ap-btn-edit"
-                          style={{ fontSize: '11px', padding: '5px 10px', background: '#FF6810', color: '#fff', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                          onClick={() => {
-                            setBalanceModalUser(user)
-                            setBalanceAdjustAmount('')
-                            setBalanceAdjustType('add')
+                          onClick={() => handleToggleWithdrawal(user)}
+                          style={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            padding: 0
                           }}
+                          title="Click to toggle withdrawal on/off"
                         >
-                          + Adjust Balance
+                          <span className={`ap-badge ap-badge--${user.isWithdrawalEnabled !== false ? 'success' : 'failed'}`}>
+                            {user.isWithdrawalEnabled !== false ? '🟢 Allowed (Chalu)' : '🔴 Paused (Band)'}
+                          </span>
                         </button>
+                      </td>
+                      <td>{new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="ap-btn-edit"
+                            style={{ fontSize: '11px', padding: '5px 10px', background: '#10B981', color: '#fff', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={() => handleOpenWithdrawalModal(user)}
+                            title="View UPIs & Create Manual Withdrawal Order"
+                          >
+                            <CreditCard size={13} />
+                            Withdrawal & UPI
+                          </button>
+                          <button
+                            type="button"
+                            className="ap-btn-edit"
+                            style={{ fontSize: '11px', padding: '5px 10px', background: '#FF6810', color: '#fff', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                            onClick={() => {
+                              setBalanceModalUser(user)
+                              setBalanceAdjustAmount('')
+                              setBalanceAdjustType('add')
+                            }}
+                          >
+                            + Balance
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1540,6 +1723,302 @@ export default function AdminPanel() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── USER WITHDRAWAL & UPI MANAGEMENT MODAL ── */}
+      {withdrawalModalUser && (
+        <div className="ap-modal-overlay" onClick={() => setWithdrawalModalUser(null)}>
+          <div className="ap-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="ap-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <CreditCard size={22} color="#FF6810" />
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 17 }}>User Withdrawal & UPI Control</h2>
+                  <span style={{ fontSize: 12, color: 'var(--ap-text-dim)' }}>
+                    {withdrawalModalUser.fullName} • {withdrawalModalUser.phone}
+                  </span>
+                </div>
+              </div>
+              <button className="ap-modal-close" onClick={() => setWithdrawalModalUser(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="ap-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* 1: Live Status & Toggle Button */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                background: (withdrawalModalUser.isWithdrawalEnabled !== false) ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                border: (withdrawalModalUser.isWithdrawalEnabled !== false) ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ap-text)' }}>Withdrawal Status:</span>
+                    <span className={`ap-badge ap-badge--${(withdrawalModalUser.isWithdrawalEnabled !== false) ? 'success' : 'failed'}`}>
+                      {(withdrawalModalUser.isWithdrawalEnabled !== false) ? '🟢 CHALU (ACTIVE)' : '🔴 BAND (PAUSED)'}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--ap-text-dim)' }}>
+                    {(withdrawalModalUser.isWithdrawalEnabled !== false)
+                      ? 'User app me normal withdrawal laga sakta hai.'
+                      : 'User ka withdrawal band hai. User withdrawal nahi laga sakega.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleWithdrawal(withdrawalModalUser)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    background: (withdrawalModalUser.isWithdrawalEnabled !== false) ? '#EF4444' : '#10B981',
+                    color: '#FFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Power size={14} />
+                  {(withdrawalModalUser.isWithdrawalEnabled !== false) ? 'Band Karein (Disable)' : 'Chalu Karein (Enable)'}
+                </button>
+              </div>
+
+              {/* 2: Current Balance & User Added UPI IDs */}
+              <div style={{ background: 'var(--ap-surface2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--ap-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ap-text-dim)', textTransform: 'uppercase' }}>
+                    User Added UPI IDs (Live from MongoDB)
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#FF6810' }}>
+                    Current Balance: ₹{Number(withdrawalModalUser.balance || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                {isLoadingWithdrawalDetails ? (
+                  <div style={{ fontSize: 12, color: 'var(--ap-text-dim)', padding: '10px 0' }}>Loading user UPI accounts...</div>
+                ) : (!userWithdrawalDetails?.user?.withdrawalUpis || userWithdrawalDetails.user.withdrawalUpis.length === 0) ? (
+                  <div style={{ padding: '12px', background: 'var(--ap-surface)', borderRadius: '8px', border: '1px dashed var(--ap-border)', fontSize: 12, color: 'var(--ap-text-dim)', textAlign: 'center' }}>
+                    User ne abhi app me koi UPI ID add nahi ki hai.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {userWithdrawalDetails.user.withdrawalUpis.map((u, i) => {
+                      const isActive = userWithdrawalDetails.user.activeWithdrawalUpi === u.upiId
+                      return (
+                        <div key={i} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          background: 'var(--ap-surface)',
+                          borderRadius: '8px',
+                          border: isActive ? '1px solid #10B981' : '1px solid var(--ap-border)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Smartphone size={16} color={isActive ? '#10B981' : '#64748B'} />
+                            <div>
+                              <strong style={{ fontSize: 13, color: 'var(--ap-text)' }}>{u.upiId}</strong>
+                              {u.payeeName && <span style={{ fontSize: 11, color: 'var(--ap-text-dim)', marginLeft: 8 }}>({u.payeeName})</span>}
+                            </div>
+                          </div>
+                          {isActive ? (
+                            <span style={{ fontSize: 11, fontWeight: 700, background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: '12px' }}>
+                              ★ Active Payout UPI
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: '#FF6810', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              onClick={() => setManualWithdrawalForm(f => ({ ...f, upiId: u.upiId, payeeName: u.payeeName || f.payeeName }))}
+                            >
+                              Select for Order
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 3: Create Manual Withdrawal Order Form */}
+              <form onSubmit={handleCreateManualWithdrawal} style={{
+                background: 'var(--ap-surface2)',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid var(--ap-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Plus size={16} color="#10B981" />
+                  <strong style={{ fontSize: 13, color: 'var(--ap-text)' }}>Create Manual Withdrawal Order</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ap-text-dim)' }}>
+                  Order lagte hi user ke wallet balance se amount minus ho jayega aur Sell section me live show hoga.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 4 }}>
+                      Withdrawal Amount (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max={withdrawalModalUser.balance || 0}
+                      placeholder="e.g. 500"
+                      value={manualWithdrawalForm.amount}
+                      onChange={(e) => setManualWithdrawalForm(f => ({ ...f, amount: e.target.value }))}
+                      required
+                      className="ap-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 4 }}>
+                      Order Status *
+                    </label>
+                    <select
+                      value={manualWithdrawalForm.status}
+                      onChange={(e) => setManualWithdrawalForm(f => ({ ...f, status: e.target.value }))}
+                      className="ap-select"
+                      style={{ width: '100%' }}
+                    >
+                      <option value="Pending">Pending (Processing)</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Success">Success (Completed)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 4 }}>
+                      Target UPI ID *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. user@okhdfcbank"
+                      value={manualWithdrawalForm.upiId}
+                      onChange={(e) => setManualWithdrawalForm(f => ({ ...f, upiId: e.target.value }))}
+                      required
+                      className="ap-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 4 }}>
+                      Bank UTR Number (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 482910481029"
+                      value={manualWithdrawalForm.utr}
+                      onChange={(e) => setManualWithdrawalForm(f => ({ ...f, utr: e.target.value }))}
+                      className="ap-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ap-text-dim)', marginBottom: 4 }}>
+                    Admin Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Manual withdrawal placed by Admin"
+                    value={manualWithdrawalForm.adminNote}
+                    onChange={(e) => setManualWithdrawalForm(f => ({ ...f, adminNote: e.target.value }))}
+                    className="ap-input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="ap-save-btn"
+                  disabled={isSubmittingWithdrawal || !manualWithdrawalForm.amount || !manualWithdrawalForm.upiId}
+                  style={{ marginTop: 6 }}
+                >
+                  {isSubmittingWithdrawal ? 'Creating Order...' : `Create Order & Minus ₹${manualWithdrawalForm.amount || 0} from Wallet`}
+                </button>
+              </form>
+
+              {/* 4: Withdrawal History */}
+              <div>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ap-text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Withdrawal History ({userWithdrawalDetails?.withdrawals?.length || 0})
+                </span>
+
+                {(!userWithdrawalDetails?.withdrawals || userWithdrawalDetails.withdrawals.length === 0) ? (
+                  <div style={{ fontSize: 12, color: 'var(--ap-text-dim)', textAlign: 'center', padding: '14px' }}>
+                    No withdrawal orders placed yet for this user.
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {userWithdrawalDetails.withdrawals.map((w) => (
+                      <div key={w._id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: 'var(--ap-surface)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--ap-border)',
+                        fontSize: 12
+                      }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <strong>#{w.withdrawalId}</strong>
+                            <span style={{ fontWeight: 800, color: '#FF6810' }}>₹{w.amount?.toFixed(2)}</span>
+                            <span className={`ap-badge ap-badge--${w.status.toLowerCase()}`}>{w.status}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--ap-text-dim)', marginTop: 2 }}>
+                            UPI: {w.upiId} • {new Date(w.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {w.status !== 'Success' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateWithdrawalStatus(w._id, 'Success')}
+                              style={{ background: '#10B981', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              ✓ Mark Success
+                            </button>
+                          )}
+                          {w.status !== 'Failed' && w.status !== 'Cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateWithdrawalStatus(w._id, 'Failed')}
+                              style={{ background: '#EF4444', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                              title="Marks failed and refunds amount back to user wallet"
+                            >
+                              ✕ Fail & Refund
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
