@@ -300,8 +300,124 @@ body { background: var(--ap-bg); font-family: 'Inter', system-ui, sans-serif; co
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
 }
 .ap-refresh-btn:hover { border-color: var(--ap-primary); color: var(--ap-primary); }
+
+.ap-refresh-btn.has-updates {
+  border-color: #10B981;
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+.ap-refresh-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #10B981;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ap-surface);
+  animation: ap-pulse 1.6s infinite;
+}
+
+@keyframes ap-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ap-refresh-btn.spinning svg,
+.ap-orders-reload-now-btn .spinning {
+  animation: ap-spin 0.65s linear infinite;
+}
+
+/* Background Sync Badge */
+.ap-background-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ap-text-dim);
+  background: var(--ap-surface2);
+  border: 1px solid var(--ap-border);
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-left: auto;
+  user-select: none;
+}
+
+.ap-sync-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10B981;
+  display: inline-block;
+  box-shadow: 0 0 6px #10B981;
+  animation: ap-pulse 2s infinite;
+}
+
+/* Orders Update Banner */
+.ap-orders-update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(14, 165, 233, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  animation: ap-slide-down 0.25s ease-out;
+}
+
+@keyframes ap-slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ap-orders-update-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ap-text);
+}
+
+.ap-orders-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10B981;
+  animation: ap-pulse 1.5s infinite;
+}
+
+.ap-orders-reload-now-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #10B981;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ap-orders-reload-now-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
 
 /* Table */
 .ap-table-wrapper {

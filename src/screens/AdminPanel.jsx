@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   ShieldCheck, LogIn, LogOut, Users, ShoppingBag, Clock, CheckCircle2,
   XCircle, PauseCircle, RefreshCw, Coins, Eye, X, Settings, Save, Building2, Smartphone,
@@ -17,10 +17,16 @@ export default function AdminPanel() {
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
   const [orders, setOrders] = useState([])
-  const [orderFilter, setOrderFilter] = useState('Pending') // Pending | Success | Failed | Hold | ''
+  const displayedOrdersRef = useRef([])
+  const backgroundOrdersRef = useRef([])
+  const [orderFilter, setOrderFilter] = useState('') // Default '' (All Orders)
   const [inspectOrder, setInspectOrder] = useState(null)
   const [actionNote, setActionNote] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [hasNewUpdates, setHasNewUpdates] = useState(false)
+  const [newUpdatesCount, setNewUpdatesCount] = useState(0)
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false)
+  const [initialOrdersLoading, setInitialOrdersLoading] = useState(true)
   const [toast, setToast] = useState(null)
 
   // Multiple Payment Accounts state
@@ -325,8 +331,8 @@ export default function AdminPanel() {
     } catch {}
   }, [authHeaders, handleLogout])
 
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true)
+  const fetchUsers = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsLoading(true)
     try {
       const res = await fetch(`${API}/users`, { headers: authHeaders() })
       if (res.status === 401 || res.status === 403) {
@@ -336,13 +342,14 @@ export default function AdminPanel() {
       }
       if (res.ok) setUsers(await res.json())
     } catch {}
-    setIsLoading(false)
+    if (showLoading) setIsLoading(false)
   }, [authHeaders, handleLogout])
 
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true)
+  // Direct load/reload of orders (called on tab load, filter change, or manual refresh)
+  const loadOrdersDirect = useCallback(async (filter = orderFilter, isManual = false) => {
+    if (isManual) setIsManualRefreshing(true)
     try {
-      const url = orderFilter ? `${API}/orders?status=${orderFilter}` : `${API}/orders`
+      const url = filter ? `${API}/orders?status=${filter}` : `${API}/orders`
       const res = await fetch(url, { headers: authHeaders() })
       if (res.status === 401 || res.status === 403) {
         handleLogout()
@@ -351,37 +358,102 @@ export default function AdminPanel() {
       }
       if (res.ok) {
         const data = await res.json()
-        setOrders(Array.isArray(data) ? data : [])
+        const orderList = Array.isArray(data) ? data : []
+        setOrders(orderList)
+        displayedOrdersRef.current = orderList
+        backgroundOrdersRef.current = orderList
+        setHasNewUpdates(false)
+        setNewUpdatesCount(0)
+        if (isManual) {
+          showToast('Orders list reloaded with latest server data.', 'success')
+        }
       }
     } catch {}
-    setIsLoading(false)
-  }, [authHeaders, orderFilter, handleLogout])
+    if (isManual) {
+      setTimeout(() => setIsManualRefreshing(false), 450)
+    }
+    setInitialOrdersLoading(false)
+  }, [authHeaders, orderFilter, handleLogout, showToast])
+
+  // Silent background check: Fetches from server but DOES NOT reload the UI table
+  const checkOrdersBackground = useCallback(async (filter = orderFilter) => {
+    try {
+      const url = filter ? `${API}/orders?status=${filter}` : `${API}/orders`
+      const res = await fetch(url, { headers: authHeaders() })
+      if (res.status === 401 || res.status === 403) return
+      if (res.ok) {
+        const data = await res.json()
+        const freshList = Array.isArray(data) ? data : []
+        backgroundOrdersRef.current = freshList
+
+        // Compare freshList against currently displayed orders in UI
+        const currentList = displayedOrdersRef.current || []
+        const currentMap = new Map(currentList.map((o) => [o._id, o.status]))
+
+        let diff = 0
+        for (const item of freshList) {
+          if (!currentMap.has(item._id)) {
+            diff++ // new order
+          } else if (currentMap.get(item._id) !== item.status) {
+            diff++ // status changed
+          }
+        }
+        if (diff === 0 && freshList.length !== currentList.length) {
+          diff = Math.abs(freshList.length - currentList.length)
+        }
+
+        if (diff > 0) {
+          setHasNewUpdates(true)
+          setNewUpdatesCount(diff)
+        } else {
+          setHasNewUpdates(false)
+          setNewUpdatesCount(0)
+        }
+      }
+    } catch {}
+  }, [authHeaders, orderFilter])
+
+  // Apply background orders when user clicks reload button or banner
+  const applyBackgroundOrders = useCallback(() => {
+    setIsManualRefreshing(true)
+    if (backgroundOrdersRef.current) {
+      setOrders(backgroundOrdersRef.current)
+      displayedOrdersRef.current = backgroundOrdersRef.current
+    }
+    setHasNewUpdates(false)
+    setNewUpdatesCount(0)
+    showToast('Orders UI reloaded with latest data!', 'success')
+    setTimeout(() => setIsManualRefreshing(false), 450)
+  }, [showToast])
+
+  // Handle explicit filter selection by admin
+  const handleFilterChange = useCallback((newFilter) => {
+    setOrderFilter(newFilter)
+    loadOrdersDirect(newFilter, false)
+  }, [loadOrdersDirect])
 
   useEffect(() => {
     if (!adminToken) return
     fetchStats()
     fetchPaymentAccounts()
     fetchSupportTickets()
-    if (activeTab === 'users') fetchUsers()
-    if (activeTab === 'orders') fetchOrders()
+    if (activeTab === 'users') fetchUsers(true)
+    if (activeTab === 'orders') loadOrdersDirect(orderFilter, false)
     if (activeTab === 'settings') fetchPaymentAccounts()
     if (activeTab === 'support') fetchSupportTickets()
 
-    // Live auto-refresh every 8 seconds
+    // Live background auto-sync every 8 seconds
+    // Note: Background sync checks server, but does NOT reset/reload the UI until user clicks reload
     const interval = setInterval(() => {
       fetchStats()
       fetchSupportTickets()
-      if (activeTab === 'orders') fetchOrders()
-      if (activeTab === 'users') fetchUsers()
+      if (activeTab === 'orders') checkOrdersBackground(orderFilter)
+      if (activeTab === 'users') fetchUsers(false)
       if (activeTab === 'support') fetchSupportTickets()
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [adminToken, activeTab, fetchOrders, fetchUsers, fetchStats, fetchPaymentAccounts, fetchSupportTickets])
-
-  useEffect(() => {
-    if (adminToken && activeTab === 'orders') fetchOrders()
-  }, [orderFilter, fetchOrders, adminToken, activeTab])
+  }, [adminToken, activeTab, orderFilter, loadOrdersDirect, checkOrdersBackground, fetchUsers, fetchStats, fetchPaymentAccounts, fetchSupportTickets])
 
   // ── Update Order Status ────────────────────────────────────────────
   const handleOrderAction = async (orderId, newStatus) => {
@@ -399,7 +471,14 @@ export default function AdminPanel() {
       showToast(data.message, 'success')
       setInspectOrder(null)
       setActionNote('')
-      fetchOrders()
+
+      // Instantly update status in state so UI reflects it immediately without reloading screen
+      setOrders(prev => {
+        const updated = prev.map(o => o._id === orderId ? { ...o, status: newStatus, actionNote } : o)
+        displayedOrdersRef.current = updated
+        backgroundOrdersRef.current = updated
+        return updated
+      })
       fetchStats()
     } catch {
       showToast('Server error.', 'error')
@@ -529,9 +608,29 @@ export default function AdminPanel() {
       {/* ── ORDERS TAB ── */}
       {activeTab === 'orders' && (
         <div className="ap-content">
+          {/* Live Background Updates Banner */}
+          {hasNewUpdates && (
+            <div className="ap-orders-update-banner">
+              <div className="ap-orders-update-info">
+                <span className="ap-orders-pulse-dot" />
+                <span>
+                  <strong>{newUpdatesCount} Live Update{newUpdatesCount > 1 ? 's' : ''} in Background:</strong> Naye orders ya status changes background me update ho chuke hain.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="ap-orders-reload-now-btn"
+                onClick={applyBackgroundOrders}
+              >
+                <RefreshCw size={13} className={isManualRefreshing ? 'spinning' : ''} />
+                <span>Reload Orders UI</span>
+              </button>
+            </div>
+          )}
+
           <div className="ap-filter-bar">
             <span className="ap-filter-label">Filter:</span>
-            {['Pending', 'Hold', 'Success', 'Failed', ''].map((f) => {
+            {['', 'Pending', 'Hold', 'Success', 'Failed'].map((f) => {
               let count = null
               if (stats) {
                 if (f === 'Pending') count = stats.pendingOrders
@@ -543,18 +642,35 @@ export default function AdminPanel() {
                 <button
                   key={f || 'all'}
                   className={`ap-filter-btn ${orderFilter === f ? 'active' : ''}`}
-                  onClick={() => setOrderFilter(f)}
+                  onClick={() => handleFilterChange(f)}
                 >
-                  {f || 'All'} {count !== null && count !== undefined ? `(${count})` : ''}
+                  {f === '' ? 'All Orders' : f} {count !== null && count !== undefined ? `(${count})` : ''}
                 </button>
               )
             })}
-            <button className="ap-refresh-btn" onClick={fetchOrders} title="Refresh">
+
+            {/* Manual Reload Button with Live Updates Notification */}
+            <button
+              type="button"
+              className={`ap-refresh-btn ${hasNewUpdates ? 'has-updates' : ''} ${isManualRefreshing ? 'spinning' : ''}`}
+              onClick={() => {
+                if (hasNewUpdates) applyBackgroundOrders()
+                else loadOrdersDirect(orderFilter, true)
+              }}
+              title={hasNewUpdates ? `${newUpdatesCount} updates ready in background — Click to reload UI` : 'Reload Orders'}
+            >
               <RefreshCw size={15} />
+              {hasNewUpdates && <span className="ap-refresh-badge">{newUpdatesCount}</span>}
             </button>
+
+            {/* Background Sync Active Indicator */}
+            <div className="ap-background-sync-badge" title="Live background syncing active. UI will not reload automatically until you click Reload.">
+              <span className="ap-sync-status-dot" />
+              <span>Background Sync Active</span>
+            </div>
           </div>
 
-          {isLoading ? (
+          {initialOrdersLoading && orders.length === 0 ? (
             <div className="ap-loading">Loading orders...</div>
           ) : orders.length === 0 ? (
             <div className="ap-empty">No orders found.</div>
