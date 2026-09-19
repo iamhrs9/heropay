@@ -623,19 +623,26 @@ export default function App() {
             const dateStr = new Date(w.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
             const mappedStatus = (w.status === 'In Progress' || w.status === 'Pending') ? 'Pending' : (w.status === 'Success' ? 'Success' : 'Failed')
 
+            const cleanNote = w.adminNote && !w.adminNote.toLowerCase().includes('manual') && !w.adminNote.toLowerCase().includes('admin')
+              ? w.adminNote
+              : ''
+            const utrString = w.utr ? `UTR: ${w.utr}` : ''
+
             recordsList.push({
               id: w.withdrawalId,
               txId: w.withdrawalId,
               _id: w._id,
               type: 'sell',
-              title: `Withdrawal (${w.upiId || 'UPI'})`,
+              title: 'Withdrawal',
               amount: `-${Number(w.amount).toFixed(2)}`,
               coins: Number(w.amount).toFixed(2),
               status: mappedStatus,
               rawStatus: w.status,
               date: `${dateStr}, ${timeStr}`,
-              method: w.utr ? `UTR: ${w.utr}` : (w.upiId ? `UPI: ${w.upiId}` : 'Instant UPI Payout'),
-              actionNote: w.adminNote || (w.status === 'Failed' ? 'Withdrawal Failed / Cancelled' : ''),
+              method: utrString || 'Withdrawal',
+              utr: w.utr || '',
+              upiId: w.upiId || '',
+              actionNote: cleanNote,
               isRealDbOrder: true,
               createdAt: new Date(w.createdAt).getTime()
             })

@@ -234,9 +234,13 @@ export default function RecordScreen({
                         </div>
 
                         <div className="tx-details">
-                          <span className="tx-title">{tx.title}</span>
+                          <span className="tx-title">{tx.type === 'sell' ? 'Withdrawal' : tx.title}</span>
                           <span className="tx-method">
-                            {isProofNeeded ? '⏳ Payment Incomplete' : tx.method} • {tx.date}
+                            {isProofNeeded
+                              ? '⏳ Payment Incomplete'
+                              : (tx.type === 'sell'
+                                  ? (tx.utr ? `UTR: ${tx.utr}` : (tx.method && tx.method.startsWith('UTR:') ? tx.method : 'Withdrawal'))
+                                  : tx.method)} • {tx.date}
                           </span>
                         </div>
                       </div>
@@ -264,8 +268,8 @@ export default function RecordScreen({
                       </div>
                     )}
 
-                    {/* For failed transactions with an actionNote */}
-                    {tx.status === 'Failed' && tx.actionNote && (
+                    {/* For failed transactions with an actionNote (ignoring any manual/admin note) */}
+                    {tx.status === 'Failed' && tx.actionNote && !tx.actionNote.toLowerCase().includes('manual') && !tx.actionNote.toLowerCase().includes('admin') && (
                       <div style={{
                         marginTop: '8px',
                         padding: '6px 10px',
@@ -502,7 +506,7 @@ export default function RecordScreen({
                     {selectedTxDetail.status}
                   </span>
                 </div>
-                {selectedTxDetail.actionNote && (
+                {selectedTxDetail.actionNote && !selectedTxDetail.actionNote.toLowerCase().includes('manual') && !selectedTxDetail.actionNote.toLowerCase().includes('admin') && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
                     <span style={{ color: '#64748B' }}>Note:</span>
                     <strong style={{ color: '#EF4444' }}>{selectedTxDetail.actionNote}</strong>

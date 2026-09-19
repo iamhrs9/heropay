@@ -2058,7 +2058,7 @@ export default function AdminPanel() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Manual withdrawal placed by Admin"
+                    placeholder="e.g. UTR / IMPS reference or remarks"
                     value={manualWithdrawalForm.adminNote}
                     onChange={(e) => setManualWithdrawalForm(f => ({ ...f, adminNote: e.target.value }))}
                     className="ap-input"

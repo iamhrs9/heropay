@@ -315,7 +315,7 @@ export default function SellScreen({
                         </span>
                       </div>
                       <span className="sell-order-date">
-                        {tx.status === 'Failed' && tx.actionNote ? tx.actionNote : tx.method} • {tx.date}
+                        {tx.utr ? `UTR: ${tx.utr}` : (tx.method && tx.method.startsWith('UTR:') ? tx.method : 'Withdrawal')} • {tx.date}
                       </span>
                     </div>
                   </div>

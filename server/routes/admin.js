@@ -531,13 +531,13 @@ router.post('/users/:id/manual-withdrawal', protect, adminOnly, async (req, res)
       payeeName: payeeName ? payeeName.trim() : user.fullName,
       status: withdrawalStatus,
       initiatedBy: 'admin',
-      adminNote: adminNote ? adminNote.trim() : 'Manual withdrawal created by Admin',
+      adminNote: adminNote ? adminNote.trim() : '',
       utr: utr ? utr.trim() : '',
       processedAt: withdrawalStatus === 'Success' ? new Date() : null
     })
 
     res.status(201).json({
-      message: `Manual withdrawal of ₹${parsedAmount.toFixed(2)} created successfully and debited from user wallet.`,
+      message: `Withdrawal of ₹${parsedAmount.toFixed(2)} created successfully and debited from user wallet.`,
       withdrawal,
       user: {
         _id: user._id,
