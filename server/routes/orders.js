@@ -62,7 +62,9 @@ router.get('/', protect, async (req, res) => {
     // Automatically auto-approve any expired orders on fetch
     await autoApproveUserExpiredOrders(req.userId)
 
-    const orders = await Order.find({ userId: req.userId }).sort({ createdAt: -1 })
+    const user = await User.findById(req.userId)
+    const filter = user ? { $or: [{ userId: user._id }, { userId: req.userId }] } : { userId: req.userId }
+    const orders = await Order.find(filter).sort({ createdAt: -1 })
     res.json(orders)
   } catch (err) {
     console.error('[GET /api/orders]', err.message)

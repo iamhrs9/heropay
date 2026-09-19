@@ -1627,6 +1627,15 @@
   cursor: pointer;
 }
 
+.sell-orders-badge-count {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
 .sell-orders-items {
   display: flex;
   flex-direction: column;
@@ -1650,6 +1659,11 @@
 }
 
 .sell-order-row.pending {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.sell-order-row.success {
   background: rgba(16, 185, 129, 0.05);
   border-color: rgba(16, 185, 129, 0.25);
 }
@@ -1678,7 +1692,12 @@
 }
 
 .sell-order-badge-icon.pending {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.sell-order-badge-icon.success {
   background: rgba(16, 185, 129, 0.15);
+  color: #059669;
 }
 
 .sell-order-badge-icon.failed {
@@ -1713,8 +1732,13 @@
 }
 
 .sell-order-status-pill.pending {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: rgba(245, 158, 11, 0.15);
+  color: #D97706;
+}
+
+.sell-order-status-pill.success {
+  background: #DCFCE7;
+  color: #15803D;
 }
 
 .sell-order-status-pill.failed {

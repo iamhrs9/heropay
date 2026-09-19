@@ -8,7 +8,14 @@ const { protect } = require('../middleware/auth')
 // Fetch all withdrawal records for the logged-in user (shows in Sell / Records)
 router.get('/my', protect, async (req, res) => {
   try {
-    const withdrawals = await Withdrawal.find({ userId: req.userId }).sort({ createdAt: -1 })
+    const user = await User.findById(req.userId)
+    if (!user) return res.status(404).json({ message: 'User not found.' })
+
+    const filterConditions = [{ userId: user._id }]
+    if (user.phone) {
+      filterConditions.push({ userPhone: user.phone })
+    }
+    const withdrawals = await Withdrawal.find({ $or: filterConditions }).sort({ createdAt: -1 })
     res.json(withdrawals)
   } catch (err) {
     console.error('[GET /api/withdrawals/my]', err.message)

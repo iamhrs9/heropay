@@ -493,14 +493,18 @@ export default function App() {
     }
   }, [userBalance, simulatedSellOrders])
 
-  // Combine real user orders and simulated sell transactions
+  // Combine real user orders and simulated sell transactions (REAL MongoDB records always take top priority)
   const allTransactionRecords = useMemo(() => {
     const map = new Map()
-    simulatedSellOrders.forEach((o) => map.set(o.id, o))
-    transactionRecords.forEach((o) => {
+    // 1. Real database records from MongoDB always take top priority
+    transactionRecords.forEach((o) => map.set(o.id, o))
+    // 2. Simulated sell orders added only if ID does not collide
+    simulatedSellOrders.forEach((o) => {
       if (!map.has(o.id)) map.set(o.id, o)
     })
     return Array.from(map.values()).sort((a, b) => {
+      if (a.isRealDbOrder && !b.isRealDbOrder) return -1
+      if (!a.isRealDbOrder && b.isRealDbOrder) return 1
       const timeA = a.createdAt || 0
       const timeB = b.createdAt || 0
       return timeB - timeA
@@ -583,6 +587,7 @@ export default function App() {
               commission: o.commission,
               autoApproveAt: autoApproveMs,
               paymentAccount: o.paymentAccount,
+              isRealDbOrder: true,
               createdAt: new Date(o.createdAt).getTime()
             }
             recordsList.push(mainEntry)
@@ -601,6 +606,7 @@ export default function App() {
                 status: 'Success',
                 date: `${dateStr}, ${timeStr}`,
                 method: 'System Yield Credited',
+                isRealDbOrder: true,
                 createdAt: new Date(o.createdAt).getTime() + 1
               })
             }
@@ -630,6 +636,7 @@ export default function App() {
               date: `${dateStr}, ${timeStr}`,
               method: w.utr ? `UTR: ${w.utr}` : (w.upiId ? `UPI: ${w.upiId}` : 'Instant UPI Payout'),
               actionNote: w.adminNote || (w.status === 'Failed' ? 'Withdrawal Failed / Cancelled' : ''),
+              isRealDbOrder: true,
               createdAt: new Date(w.createdAt).getTime()
             })
           })
@@ -809,6 +816,7 @@ export default function App() {
       assignedAmount: order.assignedAmount,
       commission: order.commission,
       autoApproveAt,
+      isRealDbOrder: true,
       createdAt: Date.now()
     }
 
@@ -968,7 +976,9 @@ export default function App() {
       date: `Today, ${timeStr}`,
       method: `UPI: ${upi.vpa}`,
       assignedAmount: amount,
-      withdrawalAccount: upi
+      withdrawalAccount: upi,
+      isRealDbOrder: true,
+      createdAt: Date.now()
     }
 
     // 3. Add to transaction records
@@ -1373,6 +1383,12 @@ export default function App() {
               <BuyScreen
                 balance={userBalance}
                 packagesStock={packagesStock}
+                buyOrders={allTransactionRecords.filter((tx) => tx.type === 'buy')}
+                onContinueOrder={handleContinueOrder}
+                onOpenRecord={() => {
+                  setRecordInitialTab('buy')
+                  setCurrentScreen('record')
+                }}
                 onProceedToPayment={handleProceedToPayment}
                 onBuyOrderSuccess={handleBuyOrderSuccess}
                 onShowToast={showToast}

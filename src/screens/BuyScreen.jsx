@@ -13,7 +13,11 @@ import {
   HelpCircle,
   Calculator,
   ArrowRight,
-  X
+  X,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ShoppingBag
 } from 'lucide-react'
 import RewardCoin from '../components/RewardCoin'
 import HeroPayLogo from '../components/HeroPayLogo'
@@ -24,6 +28,9 @@ import { calcCommission, calcTotalCoins, commissionLabel, MAX_STOCK_AMOUNT, MIN_
 export default function BuyScreen({
   balance = 0,
   packagesStock,
+  buyOrders = [],
+  onContinueOrder,
+  onOpenRecord,
   onProceedToPayment,
   onBuyOrderSuccess,
   onShowToast,
@@ -290,6 +297,104 @@ export default function BuyScreen({
           ))}
         </div>
       </div>
+
+      {/* User's Recent / Pending Buy Orders Section */}
+      {buyOrders && buyOrders.filter((o) => !o.id?.endsWith('_COMM') && !o.txId?.endsWith('_COMM')).length > 0 && (
+        <div className="buy-orders-card">
+          <div className="buy-orders-header">
+            <div className="buy-orders-title-group">
+              <ShoppingBag size={16} color="var(--color-primary)" />
+              <span className="buy-orders-title">My Buy Orders</span>
+              <span className="buy-orders-badge-count">
+                {buyOrders.filter((o) => !o.id?.endsWith('_COMM') && o.status === 'Pending').length > 0
+                  ? `${buyOrders.filter((o) => !o.id?.endsWith('_COMM') && o.status === 'Pending').length} Pending`
+                  : `${buyOrders.filter((o) => !o.id?.endsWith('_COMM')).length} Total`}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="buy-orders-all-btn"
+              onClick={onOpenRecord}
+            >
+              <span>View in Record</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          <div className="buy-orders-items">
+            {buyOrders
+              .filter((o) => !o.id?.endsWith('_COMM') && !o.txId?.endsWith('_COMM'))
+              .slice(0, 4)
+              .map((tx) => {
+                const isSuccess = tx.status === 'Success'
+                const isPending = tx.status === 'Pending'
+                const isProofNeeded = isPending && !tx.proofSubmitted
+                const statusClass = isSuccess ? 'success' : isPending ? (isProofNeeded ? 'action-needed' : 'pending') : 'failed'
+                const statusText = isSuccess
+                  ? 'Completed'
+                  : isPending
+                  ? (isProofNeeded ? 'Pay Now →' : 'Proof In Review')
+                  : 'Failed'
+                const rawAmt = parseFloat(String(tx.coins || tx.assignedAmount || tx.amount).replace(/[^0-9.-]/g, '')) || 0
+                const formattedAmt = `+₹${Math.abs(rawAmt).toFixed(2)}`
+
+                return (
+                  <div
+                    key={tx.id || tx._id || tx.txId}
+                    className={`buy-order-row ${statusClass}`}
+                    onClick={() => {
+                      if (isProofNeeded && onContinueOrder) {
+                        onContinueOrder(tx)
+                      } else if (onOpenRecord) {
+                        onOpenRecord()
+                      }
+                    }}
+                  >
+                    <div className="buy-order-row-left">
+                      <div className={`buy-order-badge-icon ${statusClass}`}>
+                        {isSuccess ? (
+                          <CheckCircle2 size={14} color="#059669" />
+                        ) : isPending ? (
+                          <Clock size={14} color={isProofNeeded ? '#D97706' : '#2563EB'} />
+                        ) : (
+                          <AlertCircle size={14} color="#DC2626" />
+                        )}
+                      </div>
+                      <div className="buy-order-info">
+                        <div className="buy-order-title-row">
+                          <span className="buy-order-text">
+                            {tx.title || `Buy Package (${tx.packageRange || 'Package'})`}
+                          </span>
+                        </div>
+                        <span className="buy-order-date">
+                          {isProofNeeded ? '⏳ Payment Incomplete (Tap to Pay)' : (tx.method || 'Processing')} • {tx.date}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="buy-order-row-right">
+                      <span className="buy-order-amount">{formattedAmt}</span>
+                      <button
+                        type="button"
+                        className={`buy-order-status-pill ${statusClass}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (isProofNeeded && onContinueOrder) {
+                            onContinueOrder(tx)
+                          } else if (onOpenRecord) {
+                            onOpenRecord()
+                          }
+                        }}
+                      >
+                        {statusText}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Interactive Custom Calculator (Visible when Custom is active) */}
       {activeCategory === 'Custom' && (
