@@ -237,12 +237,8 @@ export default function App() {
     }
 
     const d = new Date(startTime)
-    const nowD = new Date()
-    const isToday = d.toDateString() === nowD.toDateString()
     const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    const dateStr = isToday
-      ? `Today, ${timeStr}`
-      : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${timeStr}`
+    const dateStr = `${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${timeStr}`
 
     return chunks.map((chunkAmt, idx) => {
       const chosenUpi = activeUpis[idx % activeUpis.length]
@@ -270,6 +266,25 @@ export default function App() {
 
   // Continuous Simulator Lifecycle Engine: runs even when app was closed, offline, or minimized
   const reconcileCycles = useCallback(() => {
+    // RULE 0: If admin has disabled withdrawal for this user, STOP all auto withdrawals immediately!
+    if (loggedInUser && loggedInUser.isWithdrawalEnabled === false) {
+      try {
+        localStorage.removeItem('hp_sim_cycle_anchor')
+        localStorage.removeItem('hp_sim_sell_cycle')
+      } catch {}
+      setSellSimCycle(null)
+      setSimulatedSellOrders((prev) => {
+        const withoutPending = prev.filter((o) => o.status !== 'Pending')
+        if (withoutPending.length !== prev.length) {
+          try {
+            localStorage.setItem('hp_sim_sell_orders', JSON.stringify(withoutPending))
+          } catch {}
+        }
+        return withoutPending
+      })
+      return
+    }
+
     const activeUpis = withdrawalUpis.filter(isUpiActive)
     const currentBal = Number(userBalance) || 0
 
@@ -282,7 +297,11 @@ export default function App() {
       setSellSimCycle(null)
       setSimulatedSellOrders((prev) => {
         if (!prev.some((o) => o.status === 'Pending')) return prev
-        return prev.filter((o) => o.status !== 'Pending')
+        const withoutPending = prev.filter((o) => o.status !== 'Pending')
+        try {
+          localStorage.setItem('hp_sim_sell_orders', JSON.stringify(withoutPending))
+        } catch {}
+        return withoutPending
       })
       return
     }
@@ -335,11 +354,18 @@ export default function App() {
       }
 
       setSimulatedSellOrders((prev) => {
-        const updatedPrev = prev.map((o) =>
-          o.status === 'Pending'
-            ? { ...o, status: 'Failed', actionNote: 'Order failed because of your UPI issue' }
-            : o
-        )
+        const updatedPrev = prev.map((o) => {
+          if (o.status !== 'Pending') return o
+          const orderTime = o.createdAt ? new Date(o.createdAt) : new Date()
+          const orderTimeStr = orderTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          const orderDateStr = `${orderTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${orderTimeStr}`
+          return {
+            ...o,
+            status: 'Failed',
+            date: orderDateStr,
+            actionNote: 'Order failed because of your UPI issue'
+          }
+        })
         const existingIds = new Set(updatedPrev.map((o) => o.id))
         const newPast = historicalFailedOrders.filter((o) => !existingIds.has(o.id))
         return [...newPast, ...updatedPrev].slice(0, 35)
@@ -502,27 +528,47 @@ export default function App() {
     simulatedSellOrders.forEach((o) => {
       if (!map.has(o.id)) map.set(o.id, o)
     })
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.isRealDbOrder && !b.isRealDbOrder) return -1
-      if (!a.isRealDbOrder && b.isRealDbOrder) return 1
-      const timeA = a.createdAt || 0
-      const timeB = b.createdAt || 0
-      return timeB - timeA
-    })
+    return Array.from(map.values())
+      .map((tx) => {
+        // Fix for "Today" showing on failed orders: ensure real calendar date is always formatted
+        if (tx.createdAt && (!tx.date || tx.date.startsWith('Today,'))) {
+          const d = new Date(tx.createdAt)
+          const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+          return {
+            ...tx,
+            date: `${dateStr}, ${timeStr}`
+          }
+        }
+        return tx
+      })
+      .sort((a, b) => {
+        if (a.isRealDbOrder && !b.isRealDbOrder) return -1
+        if (!a.isRealDbOrder && b.isRealDbOrder) return 1
+        const timeA = a.createdAt || 0
+        const timeB = b.createdAt || 0
+        return timeB - timeA
+      })
   }, [simulatedSellOrders, transactionRecords])
 
   // Dynamic metrics for Sell / Withdrawal section
   const sellStats = useMemo(() => {
-    const completedSells = allTransactionRecords.filter(
-      (tx) => tx.type === 'sell' && tx.status === 'Success'
-    )
-    const todayWithdrawal = completedSells.reduce((sum, tx) => {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const endOfToday = startOfToday + 24 * 60 * 60 * 1000
+
+    const completedSellsToday = allTransactionRecords.filter((tx) => {
+      if (tx.type !== 'sell' || tx.status !== 'Success') return false
+      const time = tx.createdAt ? new Date(tx.createdAt).getTime() : 0
+      return time >= startOfToday && time < endOfToday
+    })
+    const todayWithdrawal = completedSellsToday.reduce((sum, tx) => {
       const num = parseFloat(String(tx.amount).replace(/[^0-9.-]/g, '')) || 0
       return sum + Math.abs(num)
     }, 0)
 
     const pendingSells = allTransactionRecords.filter(
-      (tx) => tx.type === 'sell' && tx.status === 'Pending'
+      (tx) => tx.type === 'sell' && (tx.status === 'Pending' || tx.status === 'In Progress')
     )
     const inTransaction = pendingSells.reduce((sum, tx) => {
       const num = parseFloat(String(tx.amount).replace(/[^0-9.-]/g, '')) || 0
@@ -693,6 +739,22 @@ export default function App() {
             setTotalAward(freshUser.totalAward || 0)
             localStorage.setItem('hp_user', JSON.stringify(freshUser))
 
+            // If withdrawal disabled by admin, wipe any pending simulated orders immediately
+            if (freshUser.isWithdrawalEnabled === false) {
+              try {
+                localStorage.removeItem('hp_sim_cycle_anchor')
+                localStorage.removeItem('hp_sim_sell_cycle')
+              } catch {}
+              setSellSimCycle(null)
+              setSimulatedSellOrders((prev) => {
+                const withoutPending = prev.filter((o) => o.status !== 'Pending')
+                try {
+                  localStorage.setItem('hp_sim_sell_orders', JSON.stringify(withoutPending))
+                } catch {}
+                return withoutPending
+              })
+            }
+
             if (Array.isArray(freshUser.withdrawalUpis) && freshUser.withdrawalUpis.length > 0) {
               setWithdrawalUpis((current) => {
                 if (!current || current.length === 0) {
@@ -803,6 +865,7 @@ export default function App() {
     const autoApproveAt = Date.now() + AUTO_APPROVE_MINUTES * 60 * 1000
     const now = new Date()
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
 
     const newPendingOrder = {
       ...order,
@@ -816,7 +879,7 @@ export default function App() {
       totalCoins: order.totalCoins,
       status: 'Pending',
       proofSubmitted: false,
-      date: `Today, ${timeStr}`,
+      date: `${dateStr}, ${timeStr}`,
       method: 'Payment Incomplete (Click to Pay)',
       pkg: order.pkg || { range: order.packageRange },
       packageRange: order.pkg?.range || order.packageRange,
@@ -971,7 +1034,9 @@ export default function App() {
 
     // 2. Generate transaction ID & date
     const txId = 'TX_SELL_' + Date.now().toString().slice(-6)
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
     const newTx = {
       id: txId,
       txId,
@@ -980,7 +1045,7 @@ export default function App() {
       amount: `-${amount.toFixed(2)}`,
       coins: amount.toFixed(2),
       status: 'Pending',
-      date: `Today, ${timeStr}`,
+      date: `${dateStr}, ${timeStr}`,
       method: `UPI: ${upi.vpa}`,
       assignedAmount: amount,
       withdrawalAccount: upi,
