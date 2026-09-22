@@ -15,6 +15,7 @@ import RewardCoin from '../components/RewardCoin'
 import HeroPayLogo from '../components/HeroPayLogo'
 import { useLockScroll } from '../hooks/useLockScroll'
 import './TeamScreen.css'
+import { commissionLabel } from '../config'
 
 export default function TeamScreen({ onShareInvite, user }) {
   const [activeTab, setActiveTab] = useState('level1')
@@ -65,7 +66,7 @@ export default function TeamScreen({ onShareInvite, user }) {
 
   // Readymade catchy invite message
   const shareMessage = `👋 Hello Friend! 
-HeroPay app se roz kamao high returns (9.5% + ₹6 extra yield per order)! 💰
+HeroPay app se roz kamao high returns (${commissionLabel} extra yield per order)! 💰
 
 📲 Download App: ${downloadUrl}
 🎁 My Referral Code: ${userCode}

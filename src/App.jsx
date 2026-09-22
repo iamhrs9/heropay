@@ -1160,7 +1160,7 @@ export default function App() {
       prev.map((tx) => (tx.id === orderId ? { ...tx, status: 'Success' } : tx))
     )
 
-    // 2. Add second entry for commission (+9.5% + ₹6)
+    // 2. Add second entry for commission (+7.5% + ₹6)
     const now = new Date()
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     const commTxId = 'TX' + Math.floor(100000 + Math.random() * 900000)
@@ -1248,7 +1248,7 @@ export default function App() {
     const entryCommission = {
       id: `TX${randomHex2}`,
       type: 'buy',
-      title: 'Buy Commission (9.5% + ₹6)',
+      title: `Buy Commission (${commissionLabel})`,
       amount: `+${commission.toFixed(2)}`,
       coins: commission.toFixed(2),
       status: 'Success',

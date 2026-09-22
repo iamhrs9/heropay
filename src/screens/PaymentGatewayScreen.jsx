@@ -20,7 +20,7 @@ import RewardCoin from '../components/RewardCoin'
 import HeroPayLogo from '../components/HeroPayLogo'
 import { useLockScroll } from '../hooks/useLockScroll'
 import './PaymentGatewayScreen.css'
-import { AUTO_APPROVE_MINUTES } from '../config'
+import { AUTO_APPROVE_MINUTES, commissionLabel } from '../config'
 
 export default function PaymentGatewayScreen({
   order,
@@ -262,7 +262,7 @@ export default function PaymentGatewayScreen({
 
           <div className="payment-hero-yield-banner">
             <div className="payment-yield-left">
-              <span className="yield-label">Income Yield (9.5% + ₹6)</span>
+              <span className="yield-label">Income Yield ({commissionLabel})</span>
               <strong className="yield-value">+{safeOrder.commission.toFixed(2)} Hero-Coins</strong>
             </div>
             <div className="payment-yield-divider" />

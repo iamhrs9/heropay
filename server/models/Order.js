@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema(
     },
     commission: {
       type: Number,
-      required: true // 9.5% + 6 rupees
+      required: true // 7.5% + 6 rupees
     },
     totalCoins: {
       type: Number,

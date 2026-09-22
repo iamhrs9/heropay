@@ -23,7 +23,7 @@ import RewardCoin from '../components/RewardCoin'
 import HeroPayLogo from '../components/HeroPayLogo'
 import { useLockScroll } from '../hooks/useLockScroll'
 import './BuyScreen.css'
-import { calcCommission, calcTotalCoins, commissionLabel, MAX_STOCK_AMOUNT, MIN_ORDER_AMOUNT } from '../config'
+import { calcCommission, calcTotalCoins, commissionLabel, MAX_STOCK_AMOUNT, MIN_ORDER_AMOUNT, COMMISSION_RATE, COMMISSION_FIXED } from '../config'
 
 export default function BuyScreen({
   balance = 0,
@@ -156,7 +156,7 @@ export default function BuyScreen({
         id: 'custom-' + Date.now(),
         range: `Custom ₹${numericAmount.toLocaleString('en-IN')}`,
         count: 1,
-        income: '9.5% + 6',
+        income: commissionLabel,
         amount: numericAmount,
         isCustom: true
       },
@@ -201,8 +201,8 @@ export default function BuyScreen({
       a: 'Coins are credited instantly within 60 seconds after your UPI or USDT transaction is verified by our automated system.'
     },
     {
-      q: 'How does daily income (9.5% + 6) work?',
-      a: 'Your active Hero-Coins generate 9.5% base return plus an additional 6 Hero-Coins reward credited directly to your balance daily.'
+      q: `How does daily income (${commissionLabel}) work?`,
+      a: `Your active Hero-Coins generate ${(COMMISSION_RATE * 100).toFixed(1)}% base return plus an additional ${COMMISSION_FIXED} Hero-Coins reward credited directly to your balance daily.`
     },
     {
       q: 'Is my payment protected?',
@@ -404,7 +404,7 @@ export default function BuyScreen({
               <Calculator size={18} color="var(--color-primary)" />
               <span className="buy-calc-title">Custom Coin Calculator</span>
             </div>
-            <span className="buy-calc-rate-badge">+9.5% + 6 Income</span>
+            <span className="buy-calc-rate-badge">+{commissionLabel} Income</span>
           </div>
 
           <div className="buy-calc-input-box">
@@ -436,9 +436,9 @@ export default function BuyScreen({
 
           <div className="buy-calc-summary-row">
             <div className="buy-calc-stat">
-              <span className="buy-calc-stat-label">Estimated Daily Return (9.5% + 6)</span>
+              <span className="buy-calc-stat-label">Estimated Daily Return ({commissionLabel})</span>
               <span className="buy-calc-stat-val">
-                +{(parseFloat(customAmount || 0) * 0.095 + 6).toFixed(2)} Hero-Coins
+                +{calcCommission(parseFloat(customAmount || 0)).toFixed(2)} Hero-Coins
               </span>
             </div>
             <button
@@ -579,7 +579,7 @@ export default function BuyScreen({
           <div className="buy-step-card">
             <div className="buy-step-num">3</div>
             <span className="buy-step-title">Earn Daily</span>
-            <span className="buy-step-desc">Receive 9.5% + 6 coins every 24h</span>
+            <span className="buy-step-desc">Receive {commissionLabel} every 24h</span>
           </div>
         </div>
       </div>
@@ -661,7 +661,7 @@ export default function BuyScreen({
                   </div>
 
                   <div className="buy-summary-row">
-                    <span>Commission (9.5% + ₹6)</span>
+                    <span>Commission ({commissionLabel})</span>
                     <strong style={{ color: 'var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '8px' }}>
                       +{activeOrder.commission.toFixed(2)} Hero-Coins
                     </strong>

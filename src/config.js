@@ -4,8 +4,8 @@
  * Change .env to update without touching source code.
  */
 
-// Commission: percentage as decimal (e.g. 0.095 = 9.5%)
-export const COMMISSION_RATE = parseFloat(import.meta.env.VITE_COMMISSION_RATE) || 0.095
+// Commission: percentage as decimal (e.g. 0.075 = 7.5%)
+export const COMMISSION_RATE = parseFloat(import.meta.env.VITE_COMMISSION_RATE) || 0.075
 
 // Fixed commission fee in rupees added on top of percentage (e.g. 6)
 export const COMMISSION_FIXED = parseFloat(import.meta.env.VITE_COMMISSION_FIXED) || 6
@@ -32,5 +32,5 @@ export const calcTotalCoins = (amount) => {
   return Number((amount + commission).toFixed(2))
 }
 
-/** Human-readable commission label e.g. "9.5% + ₹6" */
+/** Human-readable commission label e.g. "7.5% + ₹6" */
 export const commissionLabel = `${(COMMISSION_RATE * 100).toFixed(1).replace(/\.0$/, '')}% + ₹${COMMISSION_FIXED}`
