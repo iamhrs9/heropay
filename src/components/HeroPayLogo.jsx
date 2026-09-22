@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import logoSrc from '../assets/logo.png'
+import logoSrc from '../assets/logo.webp'
 
 export default function HeroPayLogo({ size = 36, className = '', alt = 'HeroPay Logo' }) {
   const [hasError, setHasError] = useState(false)

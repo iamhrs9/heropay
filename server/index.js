@@ -12,7 +12,13 @@ const adminRoutes = require('./routes/admin')
 const supportRoutes = require('./routes/support')
 const withdrawalRoutes = require('./routes/withdrawals')
 
+const compression = require('compression')
+
 const app = express()
+
+// ── HTTP Response Compression ─────────────────────────────────────────
+// Automatically compress JS, CSS, HTML, JSON, and text responses via gzip/deflate
+app.use(compression())
 
 // ── Middleware ──────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }))
@@ -20,6 +26,14 @@ app.use(express.urlencoded({ extended: true }))
 
 // CORS: allow all origins in production, localhost in development
 app.use(cors({ origin: true, credentials: true }))
+
+// ── API Cache Policy: Never cache private/sensitive transactional API data ──
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
+  next()
+})
 
 // ── API Routes ──────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
@@ -31,10 +45,31 @@ app.use('/api/withdrawals', withdrawalRoutes)
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'HeroPay API' }))
 
-// ── Static Frontend Serving (Production) ────────────────────────────
-app.use(express.static(path.join(__dirname, '../dist')))
+// ── Static Frontend Serving (Production) with Cache Optimization ─────
+// 1. Immutable 1-year cache for hashed Vite assets (/assets/index-xxxxx.js, .css, .webp)
+app.use('/assets', express.static(path.join(__dirname, '../dist/assets'), {
+  maxAge: '1y',
+  immutable: true
+}))
+
+// 2. Default static handler with strict no-cache revalidation for index.html
+app.use(express.static(path.join(__dirname, '../dist'), {
+  maxAge: 0,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
+      res.setHeader('Expires', '0')
+    }
+  }
+}))
+
+// 3. SPA Fallback with fresh HTML headers
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.setHeader('Expires', '0')
     return res.sendFile(path.join(__dirname, '../dist/index.html'))
   }
   next()

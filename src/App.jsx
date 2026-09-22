@@ -11,7 +11,7 @@ import MeScreen from './screens/MeScreen'
 import RecordScreen from './screens/RecordScreen'
 import SupportScreen from './screens/SupportScreen'
 import BottomNavigation from './components/BottomNavigation'
-import backgroundSrc from './assets/background.png'
+import backgroundSrc from './assets/background.webp'
 import { Coins, Clock, X, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react'
 import { AUTO_APPROVE_MINUTES, STOCK_FLUCTUATE_MS, commissionLabel } from './config'
 
@@ -138,6 +138,7 @@ export default function App() {
   const [pendingOrdersList, setPendingOrdersList] = useState([])
   const [pendingOrderDetails, setPendingOrderDetails] = useState(null)
   const [inspectProofOrder, setInspectProofOrder] = useState(null)
+  const isSyncingRef = useRef(false)
 
   // ── Dynamic 15-min In-Transaction Sell Simulator Engine ──────────
   // User simulated sell transactions (synced with localStorage)
@@ -723,15 +724,24 @@ export default function App() {
     }
   }, [loadUserOrders])
 
-  // Live polling: refresh fresh balance, award & orders from DB every 4 seconds
+  // Live polling: adaptive interval (15s idle, 5s active pending), paused on hidden tab, deduplicated in-flight
+  const hasActiveTransaction = (pendingOrdersList && pendingOrdersList.length > 0) || Boolean(sellStats?.hasWithdrawalInProgress)
+
   useEffect(() => {
     const token = localStorage.getItem('hp_token')
-    if (!token) return
+    if (!token || !loggedInUser?._id) return
 
-    const syncUserAndOrders = () => {
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => r.json())
-        .then((freshUser) => {
+    let pollTimer = null
+
+    const syncUserAndOrders = async () => {
+      // Prevent overlapping duplicate requests if one is still in-flight
+      if (isSyncingRef.current) return
+      isSyncingRef.current = true
+
+      try {
+        const freshUserRes = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        if (freshUserRes.ok) {
+          const freshUser = await freshUserRes.json()
           if (freshUser._id) {
             setLoggedInUser(freshUser)
             setUserBalance(freshUser.balance || 0)
@@ -772,16 +782,51 @@ export default function App() {
               })
             }
           }
-        })
-        .catch(() => {})
-
-      loadUserOrders(token)
+        }
+        await loadUserOrders(token)
+      } catch (err) {
+        // Silent catch to prevent UI interruption
+      } finally {
+        isSyncingRef.current = false
+      }
     }
 
-    syncUserAndOrders()
-    const pollTimer = setInterval(syncUserAndOrders, 4000)
-    return () => clearInterval(pollTimer)
-  }, [loggedInUser?._id, loadUserOrders])
+    // Adaptive interval: 5 seconds if active pending transaction needs verification, 15 seconds otherwise
+    const intervalMs = hasActiveTransaction ? 5000 : 15000
+
+    const startTimer = () => {
+      if (pollTimer) clearInterval(pollTimer)
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        pollTimer = setInterval(syncUserAndOrders, intervalMs)
+      }
+    }
+
+    // Sync once immediately upon mount or interval mode change
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      syncUserAndOrders()
+    }
+    startTimer()
+
+    // Handle tab visibility changes: pause when hidden, sync immediately and restart when visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (pollTimer) {
+          clearInterval(pollTimer)
+          pollTimer = null
+        }
+      } else {
+        syncUserAndOrders()
+        startTimer()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      if (pollTimer) clearInterval(pollTimer)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [loggedInUser?._id, loadUserOrders, hasActiveTransaction])
 
   // Re-roll random stock units for active packages (1-6) on demand
   const handleManualRefreshStock = () => {

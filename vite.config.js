@@ -14,6 +14,12 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    target: 'es2020',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true
   }
 })
 

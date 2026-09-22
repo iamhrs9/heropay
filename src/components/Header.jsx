@@ -1,6 +1,7 @@
 import React from 'react'
 import { Bell } from 'lucide-react'
 import { IconButton } from './Buttons'
+import logoSrc from '../assets/logo.webp'
 import './Header.css'
 
 export default function Header({
@@ -16,7 +17,7 @@ export default function Header({
       <div className="hp-header-left">
         {showLogo && (
           <img
-            src="/assets/logo.png"
+            src={logoSrc}
             alt="HeroPay"
             className="hp-header-logo"
           />
